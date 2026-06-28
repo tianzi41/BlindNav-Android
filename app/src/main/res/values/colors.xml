@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- colors.xml - 颜色资源 -->
+<!-- 定义应用中使用的颜色值，高对比度设计 -->
+<resources>
+    <!-- 主题颜色 -->
+    <color name="primary">#FF1976D2</color>
+    <color name="primary_dark">#FF0D47A1</color>
+    <color name="primary_light">#FF64B5F6</color>
+
+    <color name="secondary">#FFFFA000</color>
+    <color name="secondary_dark">#FFFF8F00</color>
+    <color name="secondary_light">#FFFFD54F</color>
+
+    <!-- 背景和表面 -->
+    <color name="background">#FF121212</color>
+    <color name="surface">#FF1E1E1E</color>
+    <color name="surface_variant">#FF2D2D2D</color>
+
+    <!-- 文本颜色 -->
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="on_secondary">#FF000000</color>
+    <color name="on_background">#FFFFFFFF</color>
+    <color name="on_surface">#FFFFFFFF</color>
+
+    <!-- 状态颜色 -->
+    <color name="success">#FF4CAF50</color>
+    <color name="warning">#FFFF9800</color>
+    <color name="error">#FFF44336</color>
+    <color name="info">#FF2196F3</color>
+
+    <!-- 导航按钮颜色 -->
+    <color name="blind_nav_button">#FF1976D2</color>
+    <color name="cross_street_button">#FFFF9800</color>
+    <color name="item_search_button">#FF9C27B0</color>
+    <color name="stop_button">#FFF44336</color>
+
+    <!-- 检测叠加颜色 -->
+    <color name="detection_box">#FF00FF00</color>
+    <color name="obstacle_box">#FFFF0000</color>
+    <color name="blind_path_mask">#8000FF00</color>
+    <color name="crosswalk_mask">#80FFA000</color>
+
+    <!-- 文本颜色 -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFB0B0B0</color>
+</resources>

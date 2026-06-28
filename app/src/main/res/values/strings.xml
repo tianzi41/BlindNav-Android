@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- strings.xml - 字符串资源 -->
+<!-- 定义应用中使用的文本字符串 -->
+<resources>
+    <!-- 应用名称 -->
+    <string name="app_name">盲人导航</string>
+
+    <!-- 主界面按钮文本 -->
+    <string name="btn_blind_nav">盲道导航</string>
+    <string name="btn_cross_street">过马路</string>
+    <string name="btn_item_search">物品查找</string>
+    <string name="btn_stop">停止</string>
+
+    <!-- 按钮无障碍描述 -->
+    <string name="desc_blind_nav">开始盲道导航模式，检测盲道并提供方向引导</string>
+    <string name="desc_cross_street">启动过马路辅助模式，检测斑马线和红绿灯</string>
+    <string name="desc_item_search">启动物品查找模式，搜索并引导您找到目标物品</string>
+    <string name="desc_stop">停止当前导航模式</string>
+
+    <!-- 状态文本 -->
+    <string name="status_ready">就绪 - 请选择导航模式</string>
+    <string name="status_blind_nav">盲道导航中</string>
+    <string name="status_cross_street">过马路模式</string>
+    <string name="status_item_search">物品查找模式</string>
+    <string name="status_obstacle">检测到障碍物</string>
+    <string name="status_waiting_green">等待绿灯</string>
+    <string name="status_aligning">对准斑马线</string>
+    <string name="status_seeking_blindpath">寻找盲道</string>
+    <string name="status_recovery">恢复中</string>
+
+    <!-- 物品查找界面 -->
+    <string name="item_search_title">物品查找</string>
+    <string name="item_search_hint">例：红牛、矿泉水、手机</string>
+    <string name="item_search_quick_label">常用物品（快捷按钮）：</string>
+    <string name="item_search_start">开始查找</string>
+    <string name="item_search_found">找到了！</string>
+
+    <!-- 辅助控制 -->
+    <string name="btn_switch_camera">切换摄像头</string>
+    <string name="btn_confirm_found">找到了</string>
+    <string name="btn_back">返回</string>
+
+    <!-- 权限相关 -->
+    <string name="permission_camera_required">相机权限是导航功能必需的，请在设置中授予</string>
+    <string name="permission_audio_required">录音权限用于未来语音交互功能</string>
+
+    <!-- 错误提示 -->
+    <string name="error_model_load">模型加载失败，请检查 assets/models/ 目录</string>
+    <string name="error_camera">相机启动失败</string>
+    <string name="error_audio">音频播放失败</string>
+</resources>

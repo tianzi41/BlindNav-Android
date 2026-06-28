@@ -1,0 +1,40 @@
+# Android 构建产物
+build/
+app/build/
+*.apk
+*.aab
+*.dex
+*.class
+
+# Gradle 本地缓存（.gradle/ 带点，是本地缓存，必须忽略）
+.gradle/
+
+# Gradle Wrapper（gradle/ 不带点，是 Wrapper，必须保留！）
+# gradle/
+
+# 本地配置（可能含密钥或本地路径）
+local.properties
+.env
+
+# IDE 配置
+.idea/
+*.iml
+*.iws
+
+# NDK / CMake
+.cxx/
+.externalNativeBuild/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 日志和调试文件
+*.log
+*.hprof
+captures/
+
+# 模型文件（大体积二进制，不纳入版本控制）
+*.onnx
+app/src/main/assets/models/
