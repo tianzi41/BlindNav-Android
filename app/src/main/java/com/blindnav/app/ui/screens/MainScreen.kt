@@ -42,7 +42,6 @@ fun MainScreen(
     val detections by viewModel.detections.collectAsState()
     val guidanceDirection by viewModel.guidanceDirection.collectAsState()
     val screenMode by viewModel.screenMode.collectAsState()
-    val isFrontCamera by viewModel.isFrontCamera.collectAsState()
     val cameraRunning by viewModel.cameraRunning.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val modelsLoaded by viewModel.modelsLoaded.collectAsState()
@@ -72,7 +71,6 @@ fun MainScreen(
                 guidanceText = guidanceText,
                 detections = detections,
                 guidanceDirection = guidanceDirection,
-                isFrontCamera = isFrontCamera,
                 cameraRunning = cameraRunning,
                 errorMessage = errorMessage,
                 modelsLoaded = modelsLoaded,
@@ -81,7 +79,6 @@ fun MainScreen(
                 onStartCrossStreet = { viewModel.startCrossStreet() },
                 onStartItemSearch = { viewModel.showItemSearchInput() },
                 onStop = { viewModel.stopNavigation() },
-                onSwitchCamera = { viewModel.switchCamera() },
                 onConfirmFound = { viewModel.confirmItemFound() },
                 onShowLog = { viewModel.showLogViewer() },
                 onFrameAvailable = onFrameAvailable,
@@ -111,7 +108,6 @@ private fun MainContent(
     guidanceText: String,
     detections: List<com.blindnav.app.data.DetectionResult>,
     guidanceDirection: com.blindnav.app.data.GuidanceDirection,
-    isFrontCamera: Boolean,
     cameraRunning: Boolean,
     errorMessage: String?,
     modelsLoaded: Boolean,
@@ -120,7 +116,6 @@ private fun MainContent(
     onStartCrossStreet: () -> Unit,
     onStartItemSearch: () -> Unit,
     onStop: () -> Unit,
-    onSwitchCamera: () -> Unit,
     onConfirmFound: () -> Unit,
     onShowLog: () -> Unit,
     onFrameAvailable: (Bitmap) -> Unit,
@@ -228,13 +223,6 @@ private fun MainContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CompactControlButton(
-                        text = if (isFrontCamera) "后置" else "前置",
-                        onClick = onSwitchCamera,
-                        icon = if (isFrontCamera) Icons.Default.CameraFront else Icons.Default.CameraRear,
-                        contentDescription = "切换前后摄像头"
-                    )
-
                     // 日志查看按钮
                     CompactControlButton(
                         text = "日志",

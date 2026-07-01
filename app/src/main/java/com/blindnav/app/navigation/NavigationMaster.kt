@@ -34,8 +34,8 @@ class NavigationMaster(
         // 冷却期（秒）
         private const val COOLDOWN_SEC = 0.6f
 
-        // 最小播报间隔（秒）
-        private const val MIN_TTS_INTERVAL = 1.2f
+        // 最小播报间隔（秒）—— 0.6s 允许更及时的引导更新
+        private const val MIN_TTS_INTERVAL = 0.6f
     }
 
     // 各检测器

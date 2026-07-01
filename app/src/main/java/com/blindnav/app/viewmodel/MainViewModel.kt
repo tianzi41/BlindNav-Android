@@ -80,10 +80,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _modelLoadStatus = MutableStateFlow("加载中...")
     val modelLoadStatus: StateFlow<String> = _modelLoadStatus.asStateFlow()
 
-    // 摄像头是否翻转
-    private val _isFrontCamera = MutableStateFlow(false)
-    val isFrontCamera: StateFlow<Boolean> = _isFrontCamera.asStateFlow()
-
     // 相机是否正在运行
     private val _cameraRunning = MutableStateFlow(false)
     val cameraRunning: StateFlow<Boolean> = _cameraRunning.asStateFlow()
@@ -117,47 +113,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 加载 ONNX 模型（后台线程，不阻塞 UI）
+     * 启动时只加载分割模型（盲道/斑马线），其他模型按需加载
+     * 将启动加载时间从 ~60s 降低到 ~15s
      */
     private fun loadModels() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                Log.i(TAG, "开始加载模型...")
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "复制模型文件..." }
-
-                // 先加载检测模型（较小，108MB）
-                val detLoaded = yoloEngine.loadDetectModel("yoloe_detect.onnx")
-
+                Log.i(TAG, "开始加载分割模型（懒加载模式）...")
                 withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载分割模型..." }
 
-                // 再加载分割模型（较大，274MB）
                 val segLoaded = yoloEngine.loadSegModel("yolo_seg.onnx")
 
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载红绿灯模型..." }
-
-                // 加载红绿灯专用模型
-                val tlLoaded = yoloEngine.loadTrafficModel("trafficlight.onnx")
-
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载商品模型..." }
-
-                // 加载商品识别模型
-                val shopLoaded = yoloEngine.loadShoppingModel("shopping.onnx")
+                // NNAPI warmup：用一张空白图跑一次推理，强制 NPU 编译模型图
+                // 把 2-10 秒的首次推理延迟移到加载阶段（用户已看到"加载中"提示）
+                if (segLoaded) {
+                    withContext(Dispatchers.Main) { _modelLoadStatus.value = "初始化硬件加速..." }
+                    val warmupBitmap = android.graphics.Bitmap.createBitmap(640, 480, android.graphics.Bitmap.Config.ARGB_8888)
+                    yoloEngine.runSegmentation(warmupBitmap)
+                    warmupBitmap.recycle()
+                    Log.i(TAG, "NNAPI warmup 推理完成")
+                }
 
                 withContext(Dispatchers.Main) {
-                    _modelsLoaded.value = segLoaded || detLoaded
-                    if (segLoaded && detLoaded && tlLoaded) {
-                        _modelLoadStatus.value = "全部就绪"
-                        Log.i(TAG, "所有模型加载成功（含红绿灯模型）")
-                    } else if (segLoaded && detLoaded) {
-                        _modelLoadStatus.value = "基础就绪（红绿灯模型未加载）"
-                        Log.i(TAG, "基础模型加载成功，红绿灯模型未加载")
-                    } else if (segLoaded) {
-                        _modelLoadStatus.value = "仅分割模型就绪"
-                    } else if (detLoaded) {
-                        _modelLoadStatus.value = "仅检测模型就绪"
+                    _modelsLoaded.value = segLoaded
+                    if (segLoaded) {
+                        _modelLoadStatus.value = "分割模型就绪"
+                        Log.i(TAG, "分割模型加载成功（其他模型按需加载）")
                     } else {
                         _modelLoadStatus.value = "模型加载失败"
-                        _errorMessage.value = "模型加载失败，导航功能不可用"
+                        _errorMessage.value = "分割模型加载失败，导航功能不可用"
                     }
                 }
             } catch (e: OutOfMemoryError) {
@@ -172,6 +156,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _modelLoadStatus.value = "加载失败"
                     _errorMessage.value = "模型加载失败: ${e.message}"
                 }
+            }
+        }
+    }
+
+    /**
+     * 按需加载红绿灯模型（进入过马路模式时调用）
+     */
+    private fun ensureTrafficModelLoaded() {
+        if (yoloEngine.isTrafficModelLoaded()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载红绿灯模型..." }
+                val loaded = yoloEngine.loadTrafficModel("trafficlight.onnx")
+                withContext(Dispatchers.Main) {
+                    _modelLoadStatus.value = if (loaded) "红绿灯模型就绪" else "红绿灯模型加载失败"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "红绿灯模型加载失败", e)
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "红绿灯模型加载失败" }
+            }
+        }
+    }
+
+    /**
+     * 按需加载商品识别模型（进入物品查找模式时调用）
+     */
+    private fun ensureShoppingModelLoaded() {
+        if (yoloEngine.isShoppingModelLoaded()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载商品模型..." }
+                val loaded = yoloEngine.loadShoppingModel("shopping.onnx")
+                withContext(Dispatchers.Main) {
+                    _modelLoadStatus.value = if (loaded) "商品模型就绪" else "商品模型加载失败"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "商品模型加载失败", e)
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "商品模型加载失败" }
             }
         }
     }
@@ -286,6 +308,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = "模型尚未加载完成，请稍候"
             return
         }
+        ensureTrafficModelLoaded()
         navigationMaster.startCrossStreet()
         _navigationState.value = NavigationState.SEEKING_CROSSWALK
         _statusText.value = "过马路模式"
@@ -302,6 +325,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = "模型尚未加载完成，请稍候"
             return
         }
+        ensureShoppingModelLoaded()
         Log.i(TAG, "startItemSearch: $targetName")
 
         _itemSearchTarget.value = targetName
@@ -349,13 +373,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         itemSearchWorkflow.confirmFound()
         _guidanceText.value = "找到啦！"
         AudioPlayerManager.playMusicSound("找到啦")
-    }
-
-    /**
-     * 切换前后摄像头
-     */
-    fun switchCamera() {
-        _isFrontCamera.value = !_isFrontCamera.value
     }
 
     /**

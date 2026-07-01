@@ -407,7 +407,7 @@ object AudioPlayerManager {
             return
         }
         try {
-            ttsEngine?.speak(text, TextToSpeech.QUEUE_ADD, null, "tts_${System.currentTimeMillis()}")
+            ttsEngine?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "tts_${System.currentTimeMillis()}")
             onPlaybackStarted?.invoke(text)
             // TTS 完成回调（近似延迟）
             mainHandler.postDelayed({

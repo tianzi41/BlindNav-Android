@@ -98,9 +98,7 @@ class YoloOnnxEngine(private val context: Context) {
     fun loadSegModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = SessionOptions().apply {
-                setOptimizationLevel(SessionOptions.OptLevel.BASIC_OPT)
-            }
+            val options = createSessionOptions()
             segSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             segModelLoaded = true
             Log.i(TAG, "分割模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
@@ -119,9 +117,7 @@ class YoloOnnxEngine(private val context: Context) {
     fun loadDetectModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = SessionOptions().apply {
-                setOptimizationLevel(SessionOptions.OptLevel.BASIC_OPT)
-            }
+            val options = createSessionOptions()
             detectSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             detectModelLoaded = true
             Log.i(TAG, "检测模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
@@ -140,9 +136,7 @@ class YoloOnnxEngine(private val context: Context) {
     fun loadTrafficModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = SessionOptions().apply {
-                setOptimizationLevel(SessionOptions.OptLevel.BASIC_OPT)
-            }
+            val options = createSessionOptions()
             trafficSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             trafficModelLoaded = true
             Log.i(TAG, "红绿灯模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
@@ -165,9 +159,7 @@ class YoloOnnxEngine(private val context: Context) {
     fun loadShoppingModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = SessionOptions().apply {
-                setOptimizationLevel(SessionOptions.OptLevel.BASIC_OPT)
-            }
+            val options = createSessionOptions()
             shoppingSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             shoppingModelLoaded = true
             Log.i(TAG, "商品模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
@@ -183,6 +175,24 @@ class YoloOnnxEngine(private val context: Context) {
      * 检查商品模型是否已加载
      */
     fun isShoppingModelLoaded(): Boolean = shoppingModelLoaded
+
+    /**
+     * 创建 ONNX SessionOptions（启用 NNAPI 硬件加速）
+     *
+     * NNAPI 会将推理路由到设备的 NPU/DSP/GPU，通常比纯 CPU 快 3-5 倍。
+     * 如果设备不支持 NNAPI（低端机或 Android < 8.1），自动降级为 CPU。
+     */
+    private fun createSessionOptions(): SessionOptions {
+        return SessionOptions().apply {
+            setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT)
+            try {
+                addNnapi()
+                Log.i(TAG, "NNAPI 硬件加速已启用")
+            } catch (e: Exception) {
+                Log.w(TAG, "NNAPI 不可用，回退到 CPU: ${e.message}")
+            }
+        }
+    }
 
     /**
      * 执行商品检测推理
@@ -280,6 +290,12 @@ class YoloOnnxEngine(private val context: Context) {
     // 是否已保存诊断图像（仅保存一次）
     private var diagnosticImageSaved = false
 
+    // ===== 预处理缓冲区复用（避免每帧 ~8MB 堆分配，减少 GC 压力） =====
+    private val reusablePixels = IntArray(INPUT_SIZE * INPUT_SIZE)
+    private val reusableFloats = FloatArray(1 * 3 * INPUT_SIZE * INPUT_SIZE)
+    private val reusablePadded = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
+    private val reusableCanvas = android.graphics.Canvas(reusablePadded)
+
     /**
      * 图像预处理：Letterbox 缩放 + 归一化 + 转 NCHW 格式
      * 与 YOLOv8 训练时的预处理保持一致（等比缩放 + 灰色填充）
@@ -302,16 +318,14 @@ class YoloOnnxEngine(private val context: Context) {
         letterboxPadY = (INPUT_SIZE - scaledHeight) / 2f
         Log.d(TAG, "preprocessImage: ${originalWidth}x${originalHeight}, scale=$letterboxScale, padX=$letterboxPadX, padY=$letterboxPadY")
 
-        // 等比缩放
+        // 等比缩放（此步仍需分配临时 Bitmap，尺寸随输入变化）
         val scaled = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-        // 创建 640x640 灰色背景（YOLOv8 默认 padding 颜色 114）
-        val padded = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(padded)
-        canvas.drawColor(android.graphics.Color.rgb(114, 114, 114))
-        // 居中放置
+
+        // 复用 640×640 padded bitmap：先涂灰底，再画上缩放后的图像
+        reusableCanvas.drawColor(android.graphics.Color.rgb(114, 114, 114))
         val left = (INPUT_SIZE - scaledWidth) / 2f
         val top = (INPUT_SIZE - scaledHeight) / 2f
-        canvas.drawBitmap(scaled, left, top, null)
+        reusableCanvas.drawBitmap(scaled, left, top, null)
         if (scaled != bitmap) scaled.recycle()
 
         // 诊断：首次推理时保存预处理图像，供离线检查模型输入是否正确
@@ -320,7 +334,7 @@ class YoloOnnxEngine(private val context: Context) {
             try {
                 val diagFile = java.io.File(context.filesDir, "debug_letterbox_640.png")
                 diagFile.outputStream().use { out ->
-                    padded.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    reusablePadded.compress(Bitmap.CompressFormat.PNG, 100, out)
                 }
                 Log.i(TAG, "诊断图像已保存: ${diagFile.absolutePath} (${originalWidth}x${originalHeight} → ${INPUT_SIZE}x${INPUT_SIZE})")
             } catch (e: Exception) {
@@ -328,29 +342,22 @@ class YoloOnnxEngine(private val context: Context) {
             }
         }
 
-        // 创建 NCHW 格式的浮点张量 [1, 3, H, W]
-        val floatValues = FloatArray(1 * 3 * INPUT_SIZE * INPUT_SIZE)
-        val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
-        padded.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
+        // 复用像素数组和浮点数组，避免每帧 ~6.3MB 堆分配
+        reusablePadded.getPixels(reusablePixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
 
-        for (i in pixels.indices) {
-            val pixel = pixels[i]
-            // RGB 归一化到 [0, 1]
-            floatValues[i] = ((pixel shr 16) and 0xFF) / 255.0f  // R
-            floatValues[i + INPUT_SIZE * INPUT_SIZE] = ((pixel shr 8) and 0xFF) / 255.0f  // G
-            floatValues[i + 2 * INPUT_SIZE * INPUT_SIZE] = (pixel and 0xFF) / 255.0f  // B
+        for (i in reusablePixels.indices) {
+            val pixel = reusablePixels[i]
+            reusableFloats[i] = ((pixel shr 16) and 0xFF) / 255.0f                              // R
+            reusableFloats[i + INPUT_SIZE * INPUT_SIZE] = ((pixel shr 8) and 0xFF) / 255.0f      // G
+            reusableFloats[i + 2 * INPUT_SIZE * INPUT_SIZE] = (pixel and 0xFF) / 255.0f          // B
         }
 
         val shape = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
         val tensor = OnnxTensor.createTensor(
             ortEnvironment,
-            FloatBuffer.wrap(floatValues),
+            FloatBuffer.wrap(reusableFloats),
             shape
         )
-
-        if (padded != bitmap) {
-            padded.recycle()
-        }
 
         return Triple(tensor, originalWidth, originalHeight)
     }
@@ -905,6 +912,7 @@ class YoloOnnxEngine(private val context: Context) {
         detectModelLoaded = false
         trafficModelLoaded = false
         shoppingModelLoaded = false
+        if (!reusablePadded.isRecycled) reusablePadded.recycle()
         Log.i(TAG, "YOLO 推理引擎资源已释放")
     }
 }
