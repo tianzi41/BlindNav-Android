@@ -21,10 +21,10 @@ class TrafficLightDetector(
         private const val TAG = "TrafficLightDetector"
         private const val TRAFFIC_LIGHT_CLASS = "traffic light"
         private const val TRAFFIC_LIGHT_CLASS_ID = 9  // COCO 类别 ID
-        private const val MIN_CONFIDENCE = 0.5f
+        private const val MIN_CONFIDENCE = 0.18f
 
-        // 多数表决窗口大小
-        private const val MAJORITY_WINDOW = 5
+        // 多数表决窗口大小（增大以稳定弱检测信号）
+        private const val MAJORITY_WINDOW = 8
 
         // 专用红绿灯模型类别映射
         private val TRAFFIC_LIGHT_CLASSES = mapOf(
@@ -72,11 +72,21 @@ class TrafficLightDetector(
     private fun detectWithTrafficModel(bitmap: Bitmap): TrafficLightResult {
         val detections = engine.runTrafficDetection(bitmap)
 
+        Log.d(TAG, "detectWithTrafficModel: raw detections=${detections.size}")
+        detections.take(5).forEachIndexed { i, d ->
+            Log.d(TAG, "  [$i] class='${d.className}' id=${d.classId} conf=${String.format("%.2f", d.confidence)}")
+        }
+
         // 过滤出红绿灯检测结果（排除 crossing, blank 等非灯类别）
         val trafficLightDetections = detections.filter { detection ->
             detection.className !in FILTERED_CLASSES &&
             detection.confidence >= MIN_CONFIDENCE &&
             TRAFFIC_LIGHT_CLASSES.containsKey(detection.className)
+        }
+
+        Log.d(TAG, "detectWithTrafficModel: filtered=${trafficLightDetections.size} (from ${detections.size})")
+        trafficLightDetections.forEachIndexed { i, d ->
+            Log.d(TAG, "  PASS[$i] class='${d.className}' conf=${String.format("%.2f", d.confidence)}")
         }
 
         if (trafficLightDetections.isEmpty()) {
@@ -225,14 +235,23 @@ class TrafficLightDetector(
 
     /**
      * 获取多数表决后的稳定状态
+     * 排除 UNKNOWN，只在有效灯色（RED/GREEN/YELLOW）中投票
+     * 至少需要 2 票有效结果才输出，否则返回 UNKNOWN
      */
     private fun getMajorityState(): TrafficLightState {
         if (history.isEmpty()) return TrafficLightState.UNKNOWN
 
-        val counts = history.groupingBy { it }.eachCount()
-        val majority = counts.maxByOrNull { it.value }
+        // 只统计有效灯色（排除 UNKNOWN）
+        val validCounts = history
+            .filter { it != TrafficLightState.UNKNOWN }
+            .groupingBy { it }
+            .eachCount()
 
-        return majority?.key ?: TrafficLightState.UNKNOWN
+        if (validCounts.isEmpty()) return TrafficLightState.UNKNOWN
+
+        val majority = validCounts.maxByOrNull { it.value }
+        // 至少 2 票有效才确认灯色
+        return if ((majority?.value ?: 0) >= 2) majority!!.key else TrafficLightState.UNKNOWN
     }
 
     /**

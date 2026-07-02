@@ -138,14 +138,17 @@ enum class NavigationState {
     /** 障碍物避障模式 */
     OBSTACLE_AVOID,
 
+    /** 斑马线检测测试模式 */
+    CROSSWALK_TEST,
+
+    /** 红绿灯检测测试模式 */
+    TRAFFIC_LIGHT_TEST,
+
     /** 等待交通灯 */
     WAIT_TRAFFIC_LIGHT,
 
     /** 斑马线对准阶段 */
     SEEKING_CROSSWALK,
-
-    /** 寻找下一段盲道 */
-    SEEKING_NEXT_BLINDPATH,
 
     /** 恢复模式（感知丢失） */
     RECOVERY
@@ -208,10 +211,7 @@ enum class ScreenMode {
     MAIN,
 
     /** 物品查找输入界面 */
-    ITEM_SEARCH_INPUT,
-
-    /** 日志查看界面 */
-    LOG_VIEWER
+    ITEM_SEARCH_INPUT
 }
 
 /**

@@ -649,24 +649,6 @@
     ],
     "duration_ms": 1657
   },
-  "红灯": {
-    "files": [
-      "红灯.WAV"
-    ],
-    "duration_ms": 400
-  },
-  "绿灯": {
-    "files": [
-      "绿灯.WAV"
-    ],
-    "duration_ms": 400
-  },
-  "黄灯": {
-    "files": [
-      "黄灯.WAV"
-    ],
-    "duration_ms": 400
-  },
   "远处发现斑马线": {
     "files": [
       "../music/远处发现斑马线.WAV"

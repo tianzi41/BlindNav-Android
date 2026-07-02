@@ -13,6 +13,7 @@ import com.blindnav.app.audio.AudioPlayerManager
 import com.blindnav.app.data.*
 import com.blindnav.app.ml.YoloOnnxEngine
 import com.blindnav.app.navigation.NavigationMaster
+import com.blindnav.app.navigation.CrossStreetManager
 import com.blindnav.app.navigation.ItemSearchWorkflow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,8 +35,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // YOLO 推理引擎
     private val yoloEngine = YoloOnnxEngine(application.applicationContext)
 
-    // 导航主控制器
+    // 导航主控制器（盲道导航专用）
     private val navigationMaster = NavigationMaster(yoloEngine)
+
+    // 过马路控制器（独立于盲道导航）
+    private val crossStreetManager = CrossStreetManager(yoloEngine)
 
     // 物品查找工作流
     private val itemSearchWorkflow = ItemSearchWorkflow(
@@ -91,6 +95,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     @Volatile
     private var isProcessingItem = false
+
+    @Volatile
+    private var isProcessingCross = false
 
     // 错误消息
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -207,8 +214,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * 从而确保推理的始终是近期帧，解决"状态锁死"问题。
      */
     fun processFrame(bitmap: Bitmap) {
+        // 过马路模式激活时，路由到 CrossStreetManager
+        if (crossStreetManager.isActive) {
+            processCrossStreetFrame(bitmap)
+            return
+        }
+
         if (isProcessing) {
-            // 上一帧还在处理中，丢弃当前帧
             if (!bitmap.isRecycled) bitmap.recycle()
             return
         }
@@ -223,8 +235,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 withContext(Dispatchers.Main) {
                     _navigationState.value = result.state
                     _statusText.value = result.statusText
-
-                    // 更新检测结果用于界面叠加绘制
                     _detections.value = result.detections
 
                     if (result.guidance.isNotEmpty()) {
@@ -236,7 +246,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e(TAG, "帧处理异常", e)
             } finally {
                 isProcessing = false
-                // 回收相机帧位图，避免内存泄漏
+                if (!bitmap.isRecycled) {
+                    bitmap.recycle()
+                }
+            }
+        }
+    }
+
+    /**
+     * 处理过马路帧（独立于盲道导航，使用独立的帧丢弃锁）
+     */
+    private fun processCrossStreetFrame(bitmap: Bitmap) {
+        if (isProcessingCross) {
+            if (!bitmap.isRecycled) bitmap.recycle()
+            return
+        }
+        isProcessingCross = true
+
+        viewModelScope.launch(Dispatchers.Default) {
+            try {
+                val result = crossStreetManager.processFrame(bitmap)
+
+                Log.d(TAG, "processCrossStreetFrame: state=${result.state}, guidance=${result.guidance}")
+
+                withContext(Dispatchers.Main) {
+                    _navigationState.value = result.state
+                    _statusText.value = result.statusText
+                    _detections.value = result.detections
+
+                    if (result.guidance.isNotEmpty()) {
+                        _guidanceText.value = result.guidance
+                        AudioPlayerManager.playText(result.guidance)
+                    }
+
+                    // 过马路结束后自动回到 IDLE
+                    if (!crossStreetManager.isActive) {
+                        _navigationState.value = NavigationState.IDLE
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "过马路帧处理异常", e)
+            } finally {
+                isProcessingCross = false
                 if (!bitmap.isRecycled) {
                     bitmap.recycle()
                 }
@@ -301,19 +352,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 启动过马路模式
+     * 启动过马路模式（独立于盲道导航）
      */
     fun startCrossStreet() {
         if (!_modelsLoaded.value) {
             _errorMessage.value = "模型尚未加载完成，请稍候"
             return
         }
+        // 先停止盲道导航（如果正在进行）
+        if (navigationMaster.currentState != NavigationState.IDLE) {
+            navigationMaster.stopNavigation()
+        }
         ensureTrafficModelLoaded()
-        navigationMaster.startCrossStreet()
+        crossStreetManager.start()
         _navigationState.value = NavigationState.SEEKING_CROSSWALK
         _statusText.value = "过马路模式"
         _guidanceText.value = "过马路模式已启动。"
         AudioPlayerManager.playText("过马路模式已启动。")
+    }
+
+    /**
+     * 启动斑马线测试模式
+     */
+    fun startCrosswalkTest() {
+        if (!_modelsLoaded.value) {
+            _errorMessage.value = "模型尚未加载完成，请稍候"
+            return
+        }
+        if (crossStreetManager.isActive) crossStreetManager.stop()
+        navigationMaster.startCrosswalkTest()
+        _navigationState.value = NavigationState.CROSSWALK_TEST
+        _statusText.value = "斑马线测试"
+        AudioPlayerManager.playText("斑马线测试已启动。")
+    }
+
+    /**
+     * 启动红绿灯测试模式
+     */
+    fun startTrafficLightTest() {
+        if (!_modelsLoaded.value) {
+            _errorMessage.value = "模型尚未加载完成，请稍候"
+            return
+        }
+        if (crossStreetManager.isActive) crossStreetManager.stop()
+        ensureTrafficModelLoaded()
+        navigationMaster.startTrafficLightTest()
+        _navigationState.value = NavigationState.TRAFFIC_LIGHT_TEST
+        _statusText.value = "红绿灯测试"
+        AudioPlayerManager.playText("红绿灯测试已启动。")
     }
 
     /**
@@ -349,11 +435,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 停止导航
+     * 停止所有导航（盲道 + 过马路 + 物品查找）
      */
     fun stopNavigation() {
         Log.i(TAG, "stopNavigation")
         navigationMaster.stopNavigation()
+        crossStreetManager.stop()
         itemSearchWorkflow.stopSearch()
 
         _navigationState.value = NavigationState.IDLE
@@ -394,13 +481,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun showMainScreen() {
         _screenMode.value = ScreenMode.MAIN
-    }
-
-    /**
-     * 显示日志查看界面
-     */
-    fun showLogViewer() {
-        _screenMode.value = ScreenMode.LOG_VIEWER
     }
 
     /**

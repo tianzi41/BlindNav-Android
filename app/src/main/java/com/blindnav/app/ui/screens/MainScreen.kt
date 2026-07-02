@@ -77,10 +77,11 @@ fun MainScreen(
                 modelLoadStatus = modelLoadStatus,
                 onStartBlindNav = { viewModel.startBlindPathNavigation() },
                 onStartCrossStreet = { viewModel.startCrossStreet() },
+                onStartCrosswalkTest = { viewModel.startCrosswalkTest() },
+                onStartTrafficLightTest = { viewModel.startTrafficLightTest() },
                 onStartItemSearch = { viewModel.showItemSearchInput() },
                 onStop = { viewModel.stopNavigation() },
                 onConfirmFound = { viewModel.confirmItemFound() },
-                onShowLog = { viewModel.showLogViewer() },
                 onFrameAvailable = onFrameAvailable,
                 cameraManager = cameraManager,
                 onCameraRunningChanged = { viewModel.setCameraRunning(it) },
@@ -91,11 +92,6 @@ fun MainScreen(
             ItemSearchScreen(
                 onBack = { viewModel.showMainScreen() },
                 onStartSearch = { itemName -> viewModel.startItemSearch(itemName) }
-            )
-        }
-        ScreenMode.LOG_VIEWER -> {
-            LogViewerScreen(
-                onBack = { viewModel.showMainScreen() }
             )
         }
     }
@@ -114,10 +110,11 @@ private fun MainContent(
     modelLoadStatus: String,
     onStartBlindNav: () -> Unit,
     onStartCrossStreet: () -> Unit,
+    onStartCrosswalkTest: () -> Unit,
+    onStartTrafficLightTest: () -> Unit,
     onStartItemSearch: () -> Unit,
     onStop: () -> Unit,
     onConfirmFound: () -> Unit,
-    onShowLog: () -> Unit,
     onFrameAvailable: (Bitmap) -> Unit,
     cameraManager: CameraManager,
     onCameraRunningChanged: (Boolean) -> Unit,
@@ -178,15 +175,25 @@ private fun MainContent(
                         modifier = Modifier.weight(1f)
                     )
 
-                    ControlButton(
-                        text = "过马路",
-                        onClick = onStartCrossStreet,
-                        icon = Icons.Default.Traffic,
-                        buttonColor = CrossStreetButtonColor,
-                        contentDescription = "启动过马路辅助模式",
-                        enabled = modelsLoaded && (navigationState == NavigationState.IDLE || navigationState == NavigationState.BLIND_NAV),
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        CompactControlButton(
+                            text = "斑马线",
+                            onClick = onStartCrosswalkTest,
+                            icon = Icons.Default.Traffic,
+                            contentDescription = "斑马线检测测试",
+                            enabled = modelsLoaded
+                        )
+                        CompactControlButton(
+                            text = "红绿灯",
+                            onClick = onStartTrafficLightTest,
+                            icon = Icons.Default.LightMode,
+                            contentDescription = "红绿灯检测测试",
+                            enabled = modelsLoaded
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -223,14 +230,6 @@ private fun MainContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 日志查看按钮
-                    CompactControlButton(
-                        text = "日志",
-                        onClick = onShowLog,
-                        icon = Icons.Default.List,
-                        contentDescription = "查看应用日志"
-                    )
-
                     if (navigationState == NavigationState.ITEM_SEARCH) {
                         CompactControlButton(
                             text = "找到了",

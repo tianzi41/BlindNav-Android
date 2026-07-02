@@ -54,6 +54,17 @@ class YoloOnnxEngine(private val context: Context) {
             "AD_milk",   // class 0: AD钙奶
             "Red_Bull"   // class 1: 红牛
         )
+
+        // 红绿灯模型类别名（trafficlight 模型，7 个类）
+        val TRAFFIC_CLASSES = arrayOf(
+            "blank",             // class 0: 空白
+            "countdown_blank",   // class 1: 倒计时空白
+            "countdown_go",      // class 2: 绿灯倒计时（黄灯）
+            "countdown_stop",    // class 3: 红灯倒计时
+            "crossing",          // class 4: 行人过街
+            "go",                // class 5: 绿灯
+            "stop"               // class 6: 红灯
+        )
     }
 
     // ONNX Runtime 环境和会话
@@ -229,7 +240,9 @@ class YoloOnnxEngine(private val context: Context) {
 
         return try {
             val (inputTensor, originalWidth, originalHeight) = preprocessImage(bitmap)
-            val results = runInference(trafficSession!!, inputTensor, false, originalWidth, originalHeight)
+            // 红绿灯模型使用更低的阈值（0.05），捕获更多检测候选
+            val results = runInference(trafficSession!!, inputTensor, false,
+                originalWidth, originalHeight, TRAFFIC_CLASSES, 0.05f)
             inputTensor.close()
             results
         } catch (e: Exception) {
@@ -372,7 +385,8 @@ class YoloOnnxEngine(private val context: Context) {
         withMask: Boolean,
         originalWidth: Int,
         originalHeight: Int,
-        classNames: Array<String>? = null  // 可选的类别名映射，null 则自动推断
+        classNames: Array<String>? = null,  // 可选的类别名映射，null 则自动推断
+        confThreshold: Float = CONF_THRESHOLD  // 可覆盖的置信度阈值
     ): List<DetectionResult> {
         val inputName = session.inputNames.first()
         val inputs = Collections.singletonMap(inputName, inputTensor)
@@ -472,9 +486,17 @@ class YoloOnnxEngine(private val context: Context) {
                 }
             }
 
+            // 诊断日志：红绿灯模型时输出高得分检测的类别得分
+            if (classNames === TRAFFIC_CLASSES && maxConf > 0.1f) {
+                val scores = (0 until numClasses).map { clsIdx ->
+                    classNames[clsIdx] to row[4 + clsIdx]
+                }.sortedByDescending { it.second }.take(3)
+                Log.d(TAG, "TRAFFIC_DEBUG det=$detIdx conf=${String.format("%.3f", maxConf)}: top3=${scores.joinToString { "${it.first}=${String.format("%.3f", it.second)}" }}")
+            }
+
             // 过滤低置信度
             if (maxConf > maxConfSeen) { maxConfSeen = maxConf; topClassId = maxClassId }
-            if (maxConf < CONF_THRESHOLD) continue
+            if (maxConf < confThreshold) continue
 
             // 转换为归一化坐标
             // 模型输出是 640x640 像素坐标，需要减去 letterbox padding 再映射回原始图像

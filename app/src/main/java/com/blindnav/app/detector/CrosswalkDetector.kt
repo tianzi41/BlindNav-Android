@@ -29,7 +29,7 @@ class CrosswalkDetector(
         private const val READY_AREA_THRESHOLD = 0.25f   // 到达：面积 > 25%
 
         // 对准阈值
-        private const val ALIGN_CENTER_THRESHOLD = 0.15f  // 中心偏移阈值
+        private const val ALIGN_CENTER_THRESHOLD = 0.08f  // 中心偏移阈值（>8% 即提示平移）
     }
 
     /**

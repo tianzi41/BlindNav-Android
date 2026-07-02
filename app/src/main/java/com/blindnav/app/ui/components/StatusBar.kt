@@ -105,9 +105,10 @@ private fun getStatusBarColor(state: NavigationState): Color {
         NavigationState.CROSS_STREET -> CrossStreetButtonColor
         NavigationState.ITEM_SEARCH -> ItemSearchButtonColor
         NavigationState.OBSTACLE_AVOID -> Error
+        NavigationState.CROSSWALK_TEST -> CrossStreetButtonColor
+        NavigationState.TRAFFIC_LIGHT_TEST -> Warning
         NavigationState.WAIT_TRAFFIC_LIGHT -> Warning
         NavigationState.SEEKING_CROSSWALK -> CrossStreetButtonColor
-        NavigationState.SEEKING_NEXT_BLINDPATH -> Success
         NavigationState.RECOVERY -> Error
     }
 }
@@ -122,9 +123,10 @@ private fun getNavigationModeName(state: NavigationState): String {
         NavigationState.CROSS_STREET -> "过马路"
         NavigationState.ITEM_SEARCH -> "物品查找"
         NavigationState.OBSTACLE_AVOID -> "避障"
+        NavigationState.CROSSWALK_TEST -> "斑马线测试"
+        NavigationState.TRAFFIC_LIGHT_TEST -> "红绿灯测试"
         NavigationState.WAIT_TRAFFIC_LIGHT -> "等待绿灯"
         NavigationState.SEEKING_CROSSWALK -> "对准斑马线"
-        NavigationState.SEEKING_NEXT_BLINDPATH -> "寻找盲道"
         NavigationState.RECOVERY -> "恢复中"
     }
 }
