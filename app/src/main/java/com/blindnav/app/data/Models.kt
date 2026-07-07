@@ -144,6 +144,9 @@ enum class NavigationState {
     /** 红绿灯检测测试模式 */
     TRAFFIC_LIGHT_TEST,
 
+    /** 红绿灯检测测试模式 (LYTNetV2) */
+    LYT_TRAFFIC_LIGHT_TEST,
+
     /** 等待交通灯 */
     WAIT_TRAFFIC_LIGHT,
 

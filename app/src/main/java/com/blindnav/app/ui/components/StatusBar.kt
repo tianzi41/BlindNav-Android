@@ -107,6 +107,7 @@ private fun getStatusBarColor(state: NavigationState): Color {
         NavigationState.OBSTACLE_AVOID -> Error
         NavigationState.CROSSWALK_TEST -> CrossStreetButtonColor
         NavigationState.TRAFFIC_LIGHT_TEST -> Warning
+        NavigationState.LYT_TRAFFIC_LIGHT_TEST -> Warning
         NavigationState.WAIT_TRAFFIC_LIGHT -> Warning
         NavigationState.SEEKING_CROSSWALK -> CrossStreetButtonColor
         NavigationState.RECOVERY -> Error
@@ -125,6 +126,7 @@ private fun getNavigationModeName(state: NavigationState): String {
         NavigationState.OBSTACLE_AVOID -> "避障"
         NavigationState.CROSSWALK_TEST -> "斑马线测试"
         NavigationState.TRAFFIC_LIGHT_TEST -> "红绿灯测试"
+        NavigationState.LYT_TRAFFIC_LIGHT_TEST -> "红绿灯测试(LYT)"
         NavigationState.WAIT_TRAFFIC_LIGHT -> "等待绿灯"
         NavigationState.SEEKING_CROSSWALK -> "对准斑马线"
         NavigationState.RECOVERY -> "恢复中"

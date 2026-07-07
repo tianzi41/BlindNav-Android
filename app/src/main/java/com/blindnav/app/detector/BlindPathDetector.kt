@@ -28,7 +28,7 @@ class BlindPathDetector(
         // 盲道面积最小阈值（相对于画面面积）
         private const val MIN_AREA_RATIO = 0.02f
         // 最小置信度阈值（与引擎层 CONF_THRESHOLD 一致）
-        private const val MIN_CONFIDENCE = 0.15f
+        private const val MIN_CONFIDENCE = 0.10f
         // 宽高比阈值：兼容横竖屏，取长边/短边
         // 降低到 1.05 以适应真实分割掩码（bbox 可能接近正方形）
         private const val MIN_ASPECT_RATIO = 1.05f

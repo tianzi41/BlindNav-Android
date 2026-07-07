@@ -58,6 +58,10 @@ class NavigationMaster(
     // 防抖计数器
     private var cntLost = 0
 
+    // 盲道导航帧跳过（每 3 帧推理一次，中间帧复用上次结果）
+    private var blindNavFrameCount = 0
+    private var lastBlindNavResult: FrameResult? = null
+
     // 测试模式帧跳过（每 3 帧推理一次，减少卡顿）
     private var testFrameCount = 0
     private val TEST_FRAME_SKIP = 3
@@ -102,7 +106,16 @@ class NavigationMaster(
 
         return when (currentState) {
             NavigationState.IDLE -> handleIdle(bitmap)
-            NavigationState.BLIND_NAV -> handleBlindNav(bitmap, inCooldown)
+            NavigationState.BLIND_NAV -> {
+                blindNavFrameCount++
+                if (blindNavFrameCount % TEST_FRAME_SKIP == 0) {
+                    val result = handleBlindNav(bitmap, inCooldown)
+                    lastBlindNavResult = result
+                    result
+                } else {
+                    lastBlindNavResult ?: handleBlindNav(bitmap, inCooldown)
+                }
+            }
             NavigationState.ITEM_SEARCH -> handleItemSearch(bitmap)
             NavigationState.OBSTACLE_AVOID -> handleObstacleAvoid(bitmap)
             NavigationState.RECOVERY -> handleRecovery(bitmap)
@@ -124,6 +137,16 @@ class NavigationMaster(
                     result
                 } else {
                     lastTestResult ?: handleTrafficLightTest(bitmap, now)
+                }
+            }
+            NavigationState.LYT_TRAFFIC_LIGHT_TEST -> {
+                testFrameCount++
+                if (testFrameCount % TEST_FRAME_SKIP == 0) {
+                    val result = handleLytTrafficLightTest(bitmap, now)
+                    lastTestResult = result
+                    result
+                } else {
+                    lastTestResult ?: handleLytTrafficLightTest(bitmap, now)
                 }
             }
             // 过马路相关状态由 CrossStreetManager 处理，不应到达这里
@@ -150,10 +173,23 @@ class NavigationMaster(
         inCooldown: Boolean
     ): FrameResult {
         val segResults = engine.runSegmentation(bitmap)
+
+        // 诊断日志：输出分割模型返回的所有检测
+        Log.d(TAG, "handleBlindNav: segResults=${segResults.size} 个检测")
+        segResults.take(5).forEachIndexed { i, d ->
+            Log.d(TAG, "  seg[$i] class='${d.className}' id=${d.classId} conf=${String.format("%.3f", d.confidence)}")
+        }
+
         val blindResult = blindPathDetector.parseFromSegmentation(segResults)
         Log.d(TAG, "handleBlindNav: blindDetected=${blindResult.detected}, conf=${blindResult.confidence}, cntLost=$cntLost")
 
-        val blindDetections = if (blindResult.detection != null) listOf(blindResult.detection) else emptyList()
+        // 收集盲道 + 斑马线检测用于叠加层显示
+        val allDetections = mutableListOf<DetectionResult>()
+        blindResult.detection?.let { allDetections.add(it) }
+        // 斑马线检测也加入叠加层
+        segResults.filter {
+            (it.classId == 0 || it.className == "crosswalk") && it.confidence >= 0.30f
+        }.forEach { allDetections.add(it) }
 
         var guidance = ""
         var statusText = "盲道导航中"
@@ -175,7 +211,7 @@ class NavigationMaster(
             state = currentState,
             guidance = say(currentTime, guidance),
             statusText = statusText,
-            detections = blindDetections
+            detections = allDetections
         )
     }
 
@@ -265,17 +301,16 @@ class NavigationMaster(
      * 检测到红绿灯时持续播报颜色，找不到则播报"找不到红绿灯"
      */
     private fun handleTrafficLightTest(bitmap: android.graphics.Bitmap, now: Long): FrameResult {
-        val modelLoaded = engine.isTrafficModelLoaded()
-        Log.d(TAG, "TRAFFIC_TEST: trafficModelLoaded=$modelLoaded")
+        val modelLoaded = engine.isClaModelLoaded()
+        Log.d(TAG, "TRAFFIC_TEST: claModelLoaded=$modelLoaded")
 
         val tlResult = trafficLightDetector.detect(bitmap)
 
-        Log.d(TAG, "TRAFFIC_TEST: state=${tlResult.state}, stableState=${tlResult.stableState}, conf=${tlResult.confidence}, hasDetection=${tlResult.detection != null}")
+        Log.d(TAG, "TRAFFIC_TEST: state=${tlResult.state}, stableState=${tlResult.stableState}, conf=${tlResult.confidence}, className=${tlResult.className}")
 
         val guidance = when (tlResult.stableState) {
             TrafficLightState.RED -> "红灯"
             TrafficLightState.GREEN -> "绿灯"
-            TrafficLightState.YELLOW -> "黄灯"
             else -> "找不到红绿灯"
         }
 
@@ -283,7 +318,31 @@ class NavigationMaster(
             state = NavigationState.TRAFFIC_LIGHT_TEST,
             guidance = say(now, guidance),
             statusText = "红绿灯测试: ${tlResult.stableState.name} (model=$modelLoaded)",
-            detections = listOfNotNull(tlResult.detection)
+            detections = emptyList()
+        )
+    }
+
+    /**
+     * 红绿灯检测测试模式 (LYTNetV2)
+     */
+    private fun handleLytTrafficLightTest(bitmap: android.graphics.Bitmap, now: Long): FrameResult {
+        val modelLoaded = engine.isLytModelLoaded()
+        Log.d(TAG, "TRAFFIC_LYT_TEST: lytModelLoaded=$modelLoaded")
+
+        val tlResult = trafficLightDetector.detectWithLyt(bitmap)
+        Log.d(TAG, "TRAFFIC_LYT_TEST: state=${tlResult.state}, stableState=${tlResult.stableState}, conf=${tlResult.confidence}, className=${tlResult.className}")
+
+        val guidance = when (tlResult.stableState) {
+            TrafficLightState.RED -> "红灯"
+            TrafficLightState.GREEN -> "绿灯"
+            else -> "找不到红绿灯"
+        }
+
+        return FrameResult(
+            state = NavigationState.LYT_TRAFFIC_LIGHT_TEST,
+            guidance = say(now, guidance),
+            statusText = "LYTNet测试: ${tlResult.stableState.name} (lyt=$modelLoaded)",
+            detections = emptyList()
         )
     }
 
@@ -331,6 +390,8 @@ class NavigationMaster(
         resetCounters()
         testFrameCount = 0
         lastTestResult = null
+        blindNavFrameCount = 0
+        lastBlindNavResult = null
         lastSpokenText = ""
         currentStatusText = "就绪"
     }
@@ -356,7 +417,19 @@ class NavigationMaster(
         testFrameCount = 0
         lastTestResult = null
         lastSpokenText = ""
-        currentStatusText = "红绿灯测试"
+        currentStatusText = "红绿灯测试(ResNet)"
+    }
+
+    /**
+     * 启动红绿灯测试模式 (LYTNetV2)
+     */
+    fun startLytTrafficLightTest() {
+        Log.i(TAG, "startLytTrafficLightTest")
+        transitionTo(NavigationState.LYT_TRAFFIC_LIGHT_TEST)
+        testFrameCount = 0
+        lastTestResult = null
+        lastSpokenText = ""
+        currentStatusText = "红绿灯测试(LYTNet)"
     }
 
     // ========== 内部方法 ==========

@@ -79,6 +79,7 @@ fun MainScreen(
                 onStartCrossStreet = { viewModel.startCrossStreet() },
                 onStartCrosswalkTest = { viewModel.startCrosswalkTest() },
                 onStartTrafficLightTest = { viewModel.startTrafficLightTest() },
+                onStartLytTrafficLightTest = { viewModel.startLytTrafficLightTest() },
                 onStartItemSearch = { viewModel.showItemSearchInput() },
                 onStop = { viewModel.stopNavigation() },
                 onConfirmFound = { viewModel.confirmItemFound() },
@@ -112,6 +113,7 @@ private fun MainContent(
     onStartCrossStreet: () -> Unit,
     onStartCrosswalkTest: () -> Unit,
     onStartTrafficLightTest: () -> Unit,
+    onStartLytTrafficLightTest: () -> Unit,
     onStartItemSearch: () -> Unit,
     onStop: () -> Unit,
     onConfirmFound: () -> Unit,
@@ -191,6 +193,13 @@ private fun MainContent(
                             onClick = onStartTrafficLightTest,
                             icon = Icons.Default.LightMode,
                             contentDescription = "红绿灯检测测试",
+                            enabled = modelsLoaded
+                        )
+                        CompactControlButton(
+                            text = "红绿灯(LYT)",
+                            onClick = onStartLytTrafficLightTest,
+                            icon = Icons.Default.Favorite,
+                            contentDescription = "红绿灯检测测试 LYTNetV2",
                             enabled = modelsLoaded
                         )
                     }

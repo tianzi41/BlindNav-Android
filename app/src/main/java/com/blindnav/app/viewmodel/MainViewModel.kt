@@ -135,10 +135,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // 把 2-10 秒的首次推理延迟移到加载阶段（用户已看到"加载中"提示）
                 if (segLoaded) {
                     withContext(Dispatchers.Main) { _modelLoadStatus.value = "初始化硬件加速..." }
-                    val warmupBitmap = android.graphics.Bitmap.createBitmap(640, 480, android.graphics.Bitmap.Config.ARGB_8888)
-                    yoloEngine.runSegmentation(warmupBitmap)
-                    warmupBitmap.recycle()
-                    Log.i(TAG, "NNAPI warmup 推理完成")
+                    val warmupStart = System.currentTimeMillis()
+                    try {
+                        val warmupBitmap = android.graphics.Bitmap.createBitmap(640, 480, android.graphics.Bitmap.Config.ARGB_8888)
+                        yoloEngine.runSegmentation(warmupBitmap)
+                        warmupBitmap.recycle()
+                        val warmupElapsed = System.currentTimeMillis() - warmupStart
+                        Log.w(TAG, "=== NNAPI warmup 推理完成 === 耗时=${warmupElapsed}ms (${if (warmupElapsed < 1000) "NNAPI生效" else "可能跑在CPU上"})")
+                    } catch (e: Exception) {
+                        val warmupElapsed = System.currentTimeMillis() - warmupStart
+                        Log.e(TAG, "!!! NNAPI warmup 推理失败 !!! 耗时=${warmupElapsed}ms, 错误: ${e.message}")
+                    }
                 }
 
                 withContext(Dispatchers.Main) {
@@ -171,17 +178,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * 按需加载红绿灯模型（进入过马路模式时调用）
      */
     private fun ensureTrafficModelLoaded() {
-        if (yoloEngine.isTrafficModelLoaded()) return
+        if (yoloEngine.isClaModelLoaded()) return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载红绿灯模型..." }
-                val loaded = yoloEngine.loadTrafficModel("trafficlight.onnx")
+                val loaded = yoloEngine.loadClaModel("pedestrian_light_classifier.onnx")
                 withContext(Dispatchers.Main) {
                     _modelLoadStatus.value = if (loaded) "红绿灯模型就绪" else "红绿灯模型加载失败"
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "红绿灯模型加载失败", e)
                 withContext(Dispatchers.Main) { _modelLoadStatus.value = "红绿灯模型加载失败" }
+            }
+        }
+    }
+
+    /**
+     * 按需加载 LYTNetV2 红绿灯模型
+     */
+    private fun ensureLytModelLoaded() {
+        if (yoloEngine.isLytModelLoaded()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载LYTNetV2模型..." }
+                val loaded = yoloEngine.loadLytModel("pedestrian_light_lytnet.onnx")
+                withContext(Dispatchers.Main) {
+                    _modelLoadStatus.value = if (loaded) "LYTNetV2模型就绪" else "LYTNetV2加载失败"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "LYTNetV2模型加载失败", e)
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "LYTNetV2加载失败" }
             }
         }
     }
@@ -201,6 +227,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 Log.e(TAG, "商品模型加载失败", e)
                 withContext(Dispatchers.Main) { _modelLoadStatus.value = "商品模型加载失败" }
+            }
+        }
+    }
+
+    /**
+     * 确保 COCO 检测模型已加载（物品查找回退用）
+     */
+    private fun ensureDetectModelLoaded() {
+        if (yoloEngine.isDetectModelLoaded()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载检测模型..." }
+                val loaded = yoloEngine.loadDetectModel("yoloe_detect.onnx")
+                withContext(Dispatchers.Main) {
+                    _modelLoadStatus.value = if (loaded) "检测模型就绪" else "检测模型加载失败"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "检测模型加载失败", e)
+                withContext(Dispatchers.Main) { _modelLoadStatus.value = "检测模型加载失败" }
             }
         }
     }
@@ -403,6 +448,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * 启动红绿灯测试模式 (LYTNetV2)
+     */
+    fun startLytTrafficLightTest() {
+        if (!_modelsLoaded.value) {
+            _errorMessage.value = "模型尚未加载完成，请稍候"
+            return
+        }
+        if (crossStreetManager.isActive) crossStreetManager.stop()
+        ensureLytModelLoaded()
+        navigationMaster.startLytTrafficLightTest()
+        _navigationState.value = NavigationState.LYT_TRAFFIC_LIGHT_TEST
+        _statusText.value = "LYTNetV2红绿灯测试"
+    }
+
+    /**
      * 启动物品查找模式
      */
     fun startItemSearch(targetName: String) {
@@ -412,6 +472,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         ensureShoppingModelLoaded()
+        ensureDetectModelLoaded()
         Log.i(TAG, "startItemSearch: $targetName")
 
         _itemSearchTarget.value = targetName
