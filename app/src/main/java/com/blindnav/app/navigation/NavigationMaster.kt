@@ -37,7 +37,6 @@ class NavigationMaster(
 
     // 检测器
     private val blindPathDetector = BlindPathDetector(engine)
-    private val itemDetector = ItemDetector(engine)
     private val crosswalkDetector = CrosswalkDetector(engine)
     private val trafficLightDetector = TrafficLightDetector(engine)
 
@@ -51,9 +50,6 @@ class NavigationMaster(
 
     // 上一个状态（用于恢复）
     private var previousState = NavigationState.IDLE
-
-    // 找物品模式前的导航状态
-    private var prevNavStateBeforeSearch: NavigationState? = null
 
     // 防抖计数器
     private var cntLost = 0
@@ -116,7 +112,6 @@ class NavigationMaster(
                     lastBlindNavResult ?: handleBlindNav(bitmap, inCooldown)
                 }
             }
-            NavigationState.ITEM_SEARCH -> handleItemSearch(bitmap)
             NavigationState.OBSTACLE_AVOID -> handleObstacleAvoid(bitmap)
             NavigationState.RECOVERY -> handleRecovery(bitmap)
             NavigationState.CROSSWALK_TEST -> {
@@ -216,17 +211,6 @@ class NavigationMaster(
     }
 
     /**
-     * 物品查找状态处理
-     */
-    private fun handleItemSearch(bitmap: android.graphics.Bitmap): FrameResult {
-        return FrameResult(
-            state = NavigationState.ITEM_SEARCH,
-            guidance = "",
-            statusText = "物品查找模式"
-        )
-    }
-
-    /**
      * 障碍物避障处理
      */
     private fun handleObstacleAvoid(bitmap: android.graphics.Bitmap): FrameResult {
@@ -317,7 +301,7 @@ class NavigationMaster(
         return FrameResult(
             state = NavigationState.TRAFFIC_LIGHT_TEST,
             guidance = say(now, guidance),
-            statusText = "红绿灯测试: ${tlResult.stableState.name} (model=$modelLoaded)",
+            statusText = "红绿灯: ${tlResult.stableState.name}  红=${(tlResult.redConf * 100).toInt()}% 绿=${(tlResult.greenConf * 100).toInt()}%",
             detections = emptyList()
         )
     }
@@ -341,7 +325,7 @@ class NavigationMaster(
         return FrameResult(
             state = NavigationState.LYT_TRAFFIC_LIGHT_TEST,
             guidance = say(now, guidance),
-            statusText = "LYTNet测试: ${tlResult.stableState.name} (lyt=$modelLoaded)",
+            statusText = "LYTNet: ${tlResult.stableState.name}  红=${(tlResult.redConf * 100).toInt()}% 绿=${(tlResult.greenConf * 100).toInt()}%",
             detections = emptyList()
         )
     }
@@ -356,29 +340,6 @@ class NavigationMaster(
         transitionTo(NavigationState.BLIND_NAV)
         resetCounters()
         currentStatusText = "盲道导航中"
-    }
-
-    /**
-     * 启动物品查找模式
-     */
-    fun startItemSearch() {
-        if (currentState in listOf(NavigationState.BLIND_NAV)) {
-            prevNavStateBeforeSearch = currentState
-        }
-        transitionTo(NavigationState.ITEM_SEARCH)
-        currentStatusText = "物品查找模式"
-    }
-
-    /**
-     * 停止物品查找
-     */
-    fun stopItemSearch(restoreNav: Boolean = true) {
-        if (restoreNav && prevNavStateBeforeSearch != null) {
-            transitionTo(prevNavStateBeforeSearch!!)
-            prevNavStateBeforeSearch = null
-        } else {
-            transitionTo(NavigationState.IDLE)
-        }
     }
 
     /**

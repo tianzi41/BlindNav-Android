@@ -14,7 +14,6 @@ import com.blindnav.app.data.*
 import com.blindnav.app.ml.YoloOnnxEngine
 import com.blindnav.app.navigation.NavigationMaster
 import com.blindnav.app.navigation.CrossStreetManager
-import com.blindnav.app.navigation.ItemSearchWorkflow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,11 +39,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // 过马路控制器（独立于盲道导航）
     private val crossStreetManager = CrossStreetManager(yoloEngine)
-
-    // 物品查找工作流
-    private val itemSearchWorkflow = ItemSearchWorkflow(
-        com.blindnav.app.detector.ItemDetector(yoloEngine)
-    )
 
     // ========== UI 状态 ==========
 
@@ -72,10 +66,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _guidanceDirection = MutableStateFlow(GuidanceDirection.NONE)
     val guidanceDirection: StateFlow<GuidanceDirection> = _guidanceDirection.asStateFlow()
 
-    // 物品查找目标名称
-    private val _itemSearchTarget = MutableStateFlow("")
-    val itemSearchTarget: StateFlow<String> = _itemSearchTarget.asStateFlow()
-
     // 模型加载状态
     private val _modelsLoaded = MutableStateFlow(false)
     val modelsLoaded: StateFlow<Boolean> = _modelsLoaded.asStateFlow()
@@ -88,13 +78,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _cameraRunning = MutableStateFlow(false)
     val cameraRunning: StateFlow<Boolean> = _cameraRunning.asStateFlow()
 
+    // 曝光补偿是否锁定
+    private val _exposureCompensationLocked = MutableStateFlow(false)
+    val exposureCompensationLocked: StateFlow<Boolean> = _exposureCompensationLocked.asStateFlow()
+
     // 帧处理锁：防止协程堆积导致处理旧帧（状态锁死的根因）
     // 当正在处理时跳过新帧，CameraX 的 STRATEGY_KEEP_ONLY_LATEST 保证下次回调拿到最新帧
     @Volatile
     private var isProcessing = false
-
-    @Volatile
-    private var isProcessingItem = false
 
     @Volatile
     private var isProcessingCross = false
@@ -213,44 +204,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 按需加载商品识别模型（进入物品查找模式时调用）
-     */
-    private fun ensureShoppingModelLoaded() {
-        if (yoloEngine.isShoppingModelLoaded()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载商品模型..." }
-                val loaded = yoloEngine.loadShoppingModel("shopping.onnx")
-                withContext(Dispatchers.Main) {
-                    _modelLoadStatus.value = if (loaded) "商品模型就绪" else "商品模型加载失败"
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "商品模型加载失败", e)
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "商品模型加载失败" }
-            }
-        }
-    }
-
-    /**
-     * 确保 COCO 检测模型已加载（物品查找回退用）
-     */
-    private fun ensureDetectModelLoaded() {
-        if (yoloEngine.isDetectModelLoaded()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载检测模型..." }
-                val loaded = yoloEngine.loadDetectModel("yoloe_detect.onnx")
-                withContext(Dispatchers.Main) {
-                    _modelLoadStatus.value = if (loaded) "检测模型就绪" else "检测模型加载失败"
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "检测模型加载失败", e)
-                withContext(Dispatchers.Main) { _modelLoadStatus.value = "检测模型加载失败" }
-            }
-        }
-    }
-
-    /**
      * 处理相机帧
      * 由 CameraManager 的帧回调调用
      *
@@ -333,45 +286,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e(TAG, "过马路帧处理异常", e)
             } finally {
                 isProcessingCross = false
-                if (!bitmap.isRecycled) {
-                    bitmap.recycle()
-                }
-            }
-        }
-    }
-
-    /**
-     * 处理物品查找帧（同样使用帧丢弃机制）
-     */
-    fun processItemSearchFrame(bitmap: Bitmap) {
-        if (isProcessingItem) {
-            if (!bitmap.isRecycled) bitmap.recycle()
-            return
-        }
-        isProcessingItem = true
-
-        viewModelScope.launch(Dispatchers.Default) {
-            try {
-                val result = itemSearchWorkflow.processFrame(bitmap)
-
-                withContext(Dispatchers.Main) {
-                    _statusText.value = result.statusText
-
-                    if (result.guidance.isNotEmpty()) {
-                        _guidanceText.value = result.guidance
-                        AudioPlayerManager.playText(result.guidance)
-                    }
-
-                    // 更新检测结果
-                    result.searchResult?.detection?.let {
-                        _detections.value = listOfNotNull(it)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "物品查找帧处理异常", e)
-            } finally {
-                isProcessingItem = false
-                // 回收相机帧位图，避免内存泄漏
                 if (!bitmap.isRecycled) {
                     bitmap.recycle()
                 }
@@ -463,64 +377,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 启动物品查找模式
-     */
-    fun startItemSearch(targetName: String) {
-        if (targetName.isBlank()) return
-        if (!_modelsLoaded.value) {
-            _errorMessage.value = "模型尚未加载完成，请稍候"
-            return
-        }
-        ensureShoppingModelLoaded()
-        ensureDetectModelLoaded()
-        Log.i(TAG, "startItemSearch: $targetName")
-
-        _itemSearchTarget.value = targetName
-        _screenMode.value = ScreenMode.MAIN
-        navigationMaster.startItemSearch()
-        itemSearchWorkflow.startSearch(targetName)
-
-        _navigationState.value = NavigationState.ITEM_SEARCH
-        _statusText.value = "物品查找 - $targetName"
-        _guidanceText.value = "正在搜索 $targetName..."
-        AudioPlayerManager.playText("正在搜索 $targetName...")
-    }
-
-    /**
-     * 停止物品查找
-     */
-    fun stopItemSearch() {
-        itemSearchWorkflow.stopSearch()
-        navigationMaster.stopItemSearch(restoreNav = true)
-        _itemSearchTarget.value = ""
-    }
-
-    /**
-     * 停止所有导航（盲道 + 过马路 + 物品查找）
+     * 停止所有导航（盲道 + 过马路）
      */
     fun stopNavigation() {
         Log.i(TAG, "stopNavigation")
         navigationMaster.stopNavigation()
         crossStreetManager.stop()
-        itemSearchWorkflow.stopSearch()
 
         _navigationState.value = NavigationState.IDLE
         _statusText.value = "就绪 - 请选择导航模式"
         _guidanceText.value = "导航已被取消。"
         _detections.value = emptyList()
-        _itemSearchTarget.value = ""
 
         AudioPlayerManager.playText("导航已被取消。")
         AudioPlayerManager.stopCurrentPlayback()
-    }
-
-    /**
-     * 确认找到物品
-     */
-    fun confirmItemFound() {
-        itemSearchWorkflow.confirmFound()
-        _guidanceText.value = "找到啦！"
-        AudioPlayerManager.playMusicSound("找到啦")
     }
 
     /**
@@ -531,17 +401,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 显示物品查找输入界面
-     */
-    fun showItemSearchInput() {
-        _screenMode.value = ScreenMode.ITEM_SEARCH_INPUT
-    }
-
-    /**
      * 返回主界面
      */
     fun showMainScreen() {
         _screenMode.value = ScreenMode.MAIN
+    }
+
+    fun showSettings() {
+        _screenMode.value = ScreenMode.SETTINGS
+    }
+
+    fun toggleExposureCompensation(cameraManager: com.blindnav.app.camera.CameraManager) {
+        val newState = !_exposureCompensationLocked.value
+        _exposureCompensationLocked.value = newState
+        cameraManager.setExposureCompensation(newState)
     }
 
     /**

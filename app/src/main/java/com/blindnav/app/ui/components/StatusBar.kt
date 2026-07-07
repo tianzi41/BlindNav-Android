@@ -103,7 +103,6 @@ private fun getStatusBarColor(state: NavigationState): Color {
         NavigationState.IDLE -> SurfaceVariant
         NavigationState.BLIND_NAV -> BlindNavButtonColor
         NavigationState.CROSS_STREET -> CrossStreetButtonColor
-        NavigationState.ITEM_SEARCH -> ItemSearchButtonColor
         NavigationState.OBSTACLE_AVOID -> Error
         NavigationState.CROSSWALK_TEST -> CrossStreetButtonColor
         NavigationState.TRAFFIC_LIGHT_TEST -> Warning
@@ -122,7 +121,6 @@ private fun getNavigationModeName(state: NavigationState): String {
         NavigationState.IDLE -> "就绪"
         NavigationState.BLIND_NAV -> "盲道导航"
         NavigationState.CROSS_STREET -> "过马路"
-        NavigationState.ITEM_SEARCH -> "物品查找"
         NavigationState.OBSTACLE_AVOID -> "避障"
         NavigationState.CROSSWALK_TEST -> "斑马线测试"
         NavigationState.TRAFFIC_LIGHT_TEST -> "红绿灯测试"

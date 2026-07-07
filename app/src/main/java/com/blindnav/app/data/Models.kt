@@ -132,9 +132,6 @@ enum class NavigationState {
     /** 过马路模式 */
     CROSS_STREET,
 
-    /** 物品查找模式 */
-    ITEM_SEARCH,
-
     /** 障碍物避障模式 */
     OBSTACLE_AVOID,
 
@@ -212,16 +209,6 @@ enum class TrafficLightState(val audioKey: String) {
 enum class ScreenMode {
     /** 主界面 */
     MAIN,
-
-    /** 物品查找输入界面 */
-    ITEM_SEARCH_INPUT
+    /** 设置界面 */
+    SETTINGS
 }
-
-/**
- * 物品查找结果
- */
-data class ItemSearchResult(
-    val targetName: String,
-    val found: Boolean,
-    val guidance: String = ""
-)

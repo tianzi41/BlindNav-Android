@@ -49,111 +49,6 @@ class YoloOnnxEngine(private val context: Context) {
             "toothbrush"
         )
 
-        // OIV7 601 类（YOLO11s-oiv7 模型，Open Images V7 数据集）
-        val SHOPPING_CLASSES = arrayOf(
-            "Accordion", "Adhesive tape", "Aircraft", "Airplane", "Alarm clock", "Alpaca",
-            "Ambulance", "Animal", "Ant", "Antelope", "Apple", "Armadillo",
-            "Artichoke", "Auto part", "Axe", "Backpack", "Bagel", "Baked goods",
-            "Balance beam", "Ball", "Balloon", "Banana", "Band-aid", "Banjo",
-            "Barge", "Barrel", "Baseball bat", "Baseball glove", "Bat (Animal)", "Bathroom accessory",
-            "Bathroom cabinet", "Bathtub", "Beaker", "Bear", "Bed", "Bee",
-            "Beehive", "Beer", "Beetle", "Bell pepper", "Belt", "Bench",
-            "Bicycle", "Bicycle helmet", "Bicycle wheel", "Bidet", "Billboard", "Billiard table",
-            "Binoculars", "Bird", "Blender", "Blue jay", "Boat", "Bomb",
-            "Book", "Bookcase", "Boot", "Bottle", "Bottle opener", "Bow and arrow",
-            "Bowl", "Bowling equipment", "Box", "Boy", "Brassiere", "Bread",
-            "Briefcase", "Broccoli", "Bronze sculpture", "Brown bear", "Building", "Bull",
-            "Burrito", "Bus", "Bust", "Butterfly", "Cabbage", "Cabinetry",
-            "Cake", "Cake stand", "Calculator", "Camel", "Camera", "Can opener",
-            "Canary", "Candle", "Candy", "Cannon", "Canoe", "Cantaloupe",
-            "Car", "Carnivore", "Carrot", "Cart", "Cassette deck", "Castle",
-            "Cat", "Cat furniture", "Caterpillar", "Cattle", "Ceiling fan", "Cello",
-            "Centipede", "Chainsaw", "Chair", "Cheese", "Cheetah", "Chest of drawers",
-            "Chicken", "Chime", "Chisel", "Chopsticks", "Christmas tree", "Clock",
-            "Closet", "Clothing", "Coat", "Cocktail", "Cocktail shaker", "Coconut",
-            "Coffee", "Coffee cup", "Coffee table", "Coffeemaker", "Coin", "Common fig",
-            "Common sunflower", "Computer keyboard", "Computer monitor", "Computer mouse", "Container", "Convenience store",
-            "Cookie", "Cooking spray", "Corded phone", "Cosmetics", "Couch", "Countertop",
-            "Cowboy hat", "Crab", "Cream", "Cricket ball", "Crocodile", "Croissant",
-            "Crown", "Crutch", "Cucumber", "Cupboard", "Curtain", "Cutting board",
-            "Dagger", "Dairy Product", "Deer", "Desk", "Dessert", "Diaper",
-            "Dice", "Digital clock", "Dinosaur", "Dishwasher", "Dog", "Dog bed",
-            "Doll", "Dolphin", "Door", "Door handle", "Doughnut", "Dragonfly",
-            "Drawer", "Dress", "Drill (Tool)", "Drink", "Drinking straw", "Drum",
-            "Duck", "Dumbbell", "Eagle", "Earrings", "Egg (Food)", "Elephant",
-            "Envelope", "Eraser", "Face powder", "Facial tissue holder", "Falcon", "Fashion accessory",
-            "Fast food", "Fax", "Fedora", "Filing cabinet", "Fire hydrant", "Fireplace",
-            "Fish", "Flag", "Flashlight", "Flower", "Flowerpot", "Flute",
-            "Flying disc", "Food", "Food processor", "Football", "Football helmet", "Footwear",
-            "Fork", "Fountain", "Fox", "French fries", "French horn", "Frog",
-            "Fruit", "Frying pan", "Furniture", "Garden Asparagus", "Gas stove", "Giraffe",
-            "Girl", "Glasses", "Glove", "Goat", "Goggles", "Goldfish",
-            "Golf ball", "Golf cart", "Gondola", "Goose", "Grape", "Grapefruit",
-            "Grinder", "Guacamole", "Guitar", "Hair dryer", "Hair spray", "Hamburger",
-            "Hammer", "Hamster", "Hand dryer", "Handbag", "Handgun", "Harbor seal",
-            "Harmonica", "Harp", "Harpsichord", "Hat", "Headphones", "Heater",
-            "Hedgehog", "Helicopter", "Helmet", "High heels", "Hiking equipment", "Hippopotamus",
-            "Home appliance", "Honeycomb", "Horizontal bar", "Horse", "Hot dog", "House",
-            "Houseplant", "Human arm", "Human beard", "Human body", "Human ear", "Human eye",
-            "Human face", "Human foot", "Human hair", "Human hand", "Human head", "Human leg",
-            "Human mouth", "Human nose", "Humidifier", "Ice cream", "Indoor rower", "Infant bed",
-            "Insect", "Invertebrate", "Ipod", "Isopod", "Jacket", "Jacuzzi",
-            "Jaguar (Animal)", "Jeans", "Jellyfish", "Jet ski", "Jug", "Juice",
-            "Kangaroo", "Kettle", "Kitchen & dining room table", "Kitchen appliance", "Kitchen knife", "Kitchen utensil",
-            "Kitchenware", "Kite", "Knife", "Koala", "Ladder", "Ladle",
-            "Ladybug", "Lamp", "Land vehicle", "Lantern", "Laptop", "Lavender (Plant)",
-            "Lemon", "Leopard", "Light bulb", "Light switch", "Lighthouse", "Lily",
-            "Limousine", "Lion", "Lipstick", "Lizard", "Lobster", "Loveseat",
-            "Luggage and bags", "Lynx", "Magpie", "Mammal", "Man", "Mango",
-            "Maple", "Maracas", "Marine invertebrates", "Marine mammal", "Measuring cup", "Mechanical fan",
-            "Medical equipment", "Microphone", "Microwave oven", "Milk", "Miniskirt", "Mirror",
-            "Missile", "Mixer", "Mixing bowl", "Mobile phone", "Monkey", "Moths and butterflies",
-            "Motorcycle", "Mouse", "Muffin", "Mug", "Mule", "Mushroom",
-            "Musical instrument", "Musical keyboard", "Nail (Construction)", "Necklace", "Nightstand", "Oboe",
-            "Office building", "Office supplies", "Orange", "Organ (Musical Instrument)", "Ostrich", "Otter",
-            "Oven", "Owl", "Oyster", "Paddle", "Palm tree", "Pancake",
-            "Panda", "Paper cutter", "Paper towel", "Parachute", "Parking meter", "Parrot",
-            "Pasta", "Pastry", "Peach", "Pear", "Pen", "Pencil case",
-            "Pencil sharpener", "Penguin", "Perfume", "Person", "Personal care", "Personal flotation device",
-            "Piano", "Picnic basket", "Picture frame", "Pig", "Pillow", "Pineapple",
-            "Pitcher (Container)", "Pizza", "Pizza cutter", "Plant", "Plastic bag", "Plate",
-            "Platter", "Plumbing fixture", "Polar bear", "Pomegranate", "Popcorn", "Porch",
-            "Porcupine", "Poster", "Potato", "Power plugs and sockets", "Pressure cooker", "Pretzel",
-            "Printer", "Pumpkin", "Punching bag", "Rabbit", "Raccoon", "Racket",
-            "Radish", "Ratchet (Device)", "Raven", "Rays and skates", "Red panda", "Refrigerator",
-            "Remote control", "Reptile", "Rhinoceros", "Rifle", "Ring binder", "Rocket",
-            "Roller skates", "Rose", "Rugby ball", "Ruler", "Salad", "Salt and pepper shakers",
-            "Sandal", "Sandwich", "Saucer", "Saxophone", "Scale", "Scarf",
-            "Scissors", "Scoreboard", "Scorpion", "Screwdriver", "Sculpture", "Sea lion",
-            "Sea turtle", "Seafood", "Seahorse", "Seat belt", "Segway", "Serving tray",
-            "Sewing machine", "Shark", "Sheep", "Shelf", "Shellfish", "Shirt",
-            "Shorts", "Shotgun", "Shower", "Shrimp", "Sink", "Skateboard",
-            "Ski", "Skirt", "Skull", "Skunk", "Skyscraper", "Slow cooker",
-            "Snack", "Snail", "Snake", "Snowboard", "Snowman", "Snowmobile",
-            "Snowplow", "Soap dispenser", "Sock", "Sofa bed", "Sombrero", "Sparrow",
-            "Spatula", "Spice rack", "Spider", "Spoon", "Sports equipment", "Sports uniform",
-            "Squash (Plant)", "Squid", "Squirrel", "Stairs", "Stapler", "Starfish",
-            "Stationary bicycle", "Stethoscope", "Stool", "Stop sign", "Strawberry", "Street light",
-            "Stretcher", "Studio couch", "Submarine", "Submarine sandwich", "Suit", "Suitcase",
-            "Sun hat", "Sunglasses", "Surfboard", "Sushi", "Swan", "Swim cap",
-            "Swimming pool", "Swimwear", "Sword", "Syringe", "Table", "Table tennis racket",
-            "Tablet computer", "Tableware", "Taco", "Tank", "Tap", "Tart",
-            "Taxi", "Tea", "Teapot", "Teddy bear", "Telephone", "Television",
-            "Tennis ball", "Tennis racket", "Tent", "Tiara", "Tick", "Tie",
-            "Tiger", "Tin can", "Tire", "Toaster", "Toilet", "Toilet paper",
-            "Tomato", "Tool", "Toothbrush", "Torch", "Tortoise", "Towel",
-            "Tower", "Toy", "Traffic light", "Traffic sign", "Train", "Training bench",
-            "Treadmill", "Tree", "Tree house", "Tripod", "Trombone", "Trousers",
-            "Truck", "Trumpet", "Turkey", "Turtle", "Umbrella", "Unicycle",
-            "Van", "Vase", "Vegetable", "Vehicle", "Vehicle registration plate", "Violin",
-            "Volleyball (Ball)", "Waffle", "Waffle iron", "Wall clock", "Wardrobe", "Washing machine",
-            "Waste container", "Watch", "Watercraft", "Watermelon", "Weapon", "Whale",
-            "Wheel", "Wheelchair", "Whisk", "Whiteboard", "Willow", "Window",
-            "Window blind", "Wine", "Wine glass", "Wine rack", "Winter melon", "Wok",
-            "Woman", "Wood-burning stove", "Woodpecker", "Worm", "Wrench", "Zebra",
-            "Zucchini"
-        )
-
         // 红绿灯模型类别名（trafficlight 模型，7 个类）
         val TRAFFIC_CLASSES = arrayOf(
             "blank",             // class 0: 空白
@@ -165,26 +60,8 @@ class YoloOnnxEngine(private val context: Context) {
             "stop"               // class 6: 红灯
         )
 
-        // 人行红绿灯分类模型（ResNet18, 448x448, 5 类）
-        val CLA_CLASSES = arrayOf(
-            "red",                // class 0: 红灯
-            "green",              // class 1: 绿灯
-            "countdown_green",    // class 2: 倒计时绿灯
-            "countdown_blank",    // class 3: 倒计时空白
-            "none"                // class 4: 无灯
-        )
-
-        val CLA_CLASSES_CN = arrayOf("红灯", "绿灯", "黄灯", "黄灯", "无灯")
-
-        // 分类模型参数
-        private const val CLA_INPUT_SIZE = 448
-        // ImageNet 标准化参数（与训练时一致）
-        private const val MEAN_R = 0.485f; private const val MEAN_G = 0.456f; private const val MEAN_B = 0.406f
-        private const val STD_R  = 0.229f; private const val STD_G  = 0.224f; private const val STD_B  = 0.225f
-
-        // LYTNetV2 模型参数（768×576, 无归一化）
-        const val LYT_INPUT_H = 768
-        const val LYT_INPUT_W = 576
+        // 行人红绿灯分类模型类别名（ResNet18/LYTNetV2，5 类）
+        val CLA_CLASSES = arrayOf("red", "green", "countdown_green", "countdown_blank", "none")
     }
 
     // ONNX Runtime 环境和会话
@@ -192,33 +69,25 @@ class YoloOnnxEngine(private val context: Context) {
     private var segSession: OrtSession? = null
     private var detectSession: OrtSession? = null
     private var trafficSession: OrtSession? = null
-    private var shoppingSession: OrtSession? = null
-    private var claSession: OrtSession? = null       // 分类模型会话
+    private var claSession: OrtSession? = null       // 分类模型会话(ResNet18)
     private var lytSession: OrtSession? = null       // LYTNetV2 模型会话
 
     // 模型是否已加载
     private var segModelLoaded = false
     private var detectModelLoaded = false
+    private var claModelLoaded = false
+    private var lytModelLoaded = false
     private var trafficModelLoaded = false
-    private var shoppingModelLoaded = false
-    private var claModelLoaded = false               // 分类模型是否已加载
-    private var lytModelLoaded = false               // LYTNetV2 是否已加载
 
     /**
      * 将 assets 中的模型文件复制到缓存目录（避免 readBytes() 导致 OOM）
-     * 增加长度校验：asset 更新后若缓存大小不一致，则重新复制，防止旧缓存导致模型版本错乱
      */
     private fun copyAssetToCache(assetPath: String): File? {
         return try {
             val cacheFile = File(context.cacheDir, File(assetPath).name)
-            val assetFd = context.assets.openFd(assetPath)
-            val assetLen = assetFd.length
-            assetFd.close()
-
-            if (cacheFile.exists() && cacheFile.length() == assetLen) {
+            if (cacheFile.exists() && cacheFile.length() > 0) {
                 return cacheFile
             }
-
             context.assets.open(assetPath).use { input ->
                 cacheFile.outputStream().use { output ->
                     input.copyTo(output, bufferSize = 8192)
@@ -235,9 +104,6 @@ class YoloOnnxEngine(private val context: Context) {
      * 加载分割模型（用于盲道和斑马线分割）
      * 模型文件路径: assets/models/xxx.onnx
      * 使用文件方式加载，避免 readBytes() 导致 OOM
-     *
-     * 注意：FP16 量化模型在某些设备的 NNAPI 上可能加载失败，因此先尝试 NNAPI，
-     * 失败后再回退到纯 CPU，确保分割模型可用。
      */
     fun loadSegModel(modelFileName: String): Boolean {
         val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
@@ -249,7 +115,6 @@ class YoloOnnxEngine(private val context: Context) {
             val options = createSessionOptions()  // NNAPI 优先
             segSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             segModelLoaded = true
-            val provider = "NNAPI"
             val elapsed = System.currentTimeMillis() - t0
             Log.w(TAG, "=== 分割模型加载成功(NNAPI): $modelFileName (${cacheFile.length() / 1024 / 1024}MB) 耗时=${elapsed}ms ===")
             true
@@ -259,14 +124,9 @@ class YoloOnnxEngine(private val context: Context) {
                 val cpuOptions = createSessionOptions(useNnapi = false)
                 segSession = ortEnvironment.createSession(cacheFile.absolutePath, cpuOptions)
                 segModelLoaded = true
-                val provider = "CPU"
                 val elapsed = System.currentTimeMillis() - t0
                 Log.w(TAG, "=== 分割模型加载成功(CPU回退): $modelFileName (${cacheFile.length() / 1024 / 1024}MB) 耗时=${elapsed}ms ===")
                 true
-            } catch (e2: Exception) {
-                Log.e(TAG, "CPU 回退也失败: $modelFileName", e2)
-                segModelLoaded = false
-                false
             } catch (e2: Exception) {
                 Log.e(TAG, "CPU 回退也失败: $modelFileName", e2)
                 segModelLoaded = false
@@ -319,42 +179,12 @@ class YoloOnnxEngine(private val context: Context) {
     fun isTrafficModelLoaded(): Boolean = trafficModelLoaded
 
     /**
-     * 加载商品识别专用模型
-     */
-    fun loadShoppingModel(modelFileName: String): Boolean {
-        return try {
-            val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = createSessionOptions()
-            shoppingSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
-            shoppingModelLoaded = true
-            Log.i(TAG, "商品模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "商品模型加载失败: $modelFileName", e)
-            shoppingModelLoaded = false
-            false
-        }
-    }
-
-    /**
-     * 检查商品模型是否已加载
-     */
-    fun isShoppingModelLoaded(): Boolean = shoppingModelLoaded
-
-    /**
-     * 检查检测模型是否已加载
-     */
-    fun isDetectModelLoaded(): Boolean = detectModelLoaded
-
-    // ============ 分类模型（ResNet18, 人行红绿灯） ============
-
-    /**
-     * 加载人行红绿灯分类模型
+     * 加载 ResNet18 行人红绿灯分类模型
      */
     fun loadClaModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = createSessionOptions()
+            val options = createSessionOptions(useNnapi = false)
             claSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             claModelLoaded = true
             Log.i(TAG, "分类模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
@@ -368,93 +198,16 @@ class YoloOnnxEngine(private val context: Context) {
 
     fun isClaModelLoaded(): Boolean = claModelLoaded
 
-    /**
-     * 执行人行红绿灯分类推理
-     * @return Pair<classIndex, confidence> 或 null
-     */
-    fun runClassification(bitmap: Bitmap): Pair<Int, Float>? {
-        if (!claModelLoaded || claSession == null) {
-            Log.w(TAG, "分类模型未加载")
-            return null
-        }
-        return try {
-            val inputTensor = preprocessClassification(bitmap)
-            val inputName = claSession!!.inputNames.first()
-            val inputs = Collections.singletonMap(inputName, inputTensor)
-            val outputs = claSession!!.run(inputs)
-            val outputTensor = outputs[0]
-            val scores = (outputTensor.value as Array<FloatArray>)[0]
-
-            // softmax
-            var maxScore = Float.NEGATIVE_INFINITY
-            for (s in scores) { if (s > maxScore) maxScore = s }
-            var sumExp = 0f
-            for (s in scores) { sumExp += Math.exp((s - maxScore).toDouble()).toFloat() }
-
-            var bestIdx = 0
-            var bestConf = 0f
-            for (i in scores.indices) {
-                val prob = Math.exp((scores[i] - maxScore).toDouble()).toFloat() / sumExp
-                if (prob > bestConf) {
-                    bestConf = prob
-                    bestIdx = i
-                }
-            }
-
-            inputTensor.close()
-            Log.d(TAG, "runClassification: class=$bestIdx(${CLA_CLASSES[bestIdx]}) conf=${String.format("%.3f", bestConf)}")
-            Pair(bestIdx, bestConf)
-        } catch (e: Exception) {
-            Log.e(TAG, "分类推理失败", e)
-            null
-        }
-    }
-
-    // 分类模型预处理缓冲区
-    private val claPixels = IntArray(CLA_INPUT_SIZE * CLA_INPUT_SIZE)
-    private val claFloats = FloatArray(1 * 3 * CLA_INPUT_SIZE * CLA_INPUT_SIZE)
-
-    /**
-     * 分类模型预处理：直接缩放到 448x448 + ImageNet 标准化 + NCHW
-     * 与训练时的 transforms.Resize((448,448)) + Normalize 一致
-     */
-    private fun preprocessClassification(bitmap: Bitmap): OnnxTensor {
-        // 直接缩放到 448x448
-        val resized = Bitmap.createScaledBitmap(bitmap, CLA_INPUT_SIZE, CLA_INPUT_SIZE, true)
-        resized.getPixels(claPixels, 0, CLA_INPUT_SIZE, 0, 0, CLA_INPUT_SIZE, CLA_INPUT_SIZE)
-        if (resized != bitmap) resized.recycle()
-
-        val sz = CLA_INPUT_SIZE
-        for (i in claPixels.indices) {
-            val pixel = claPixels[i]
-            // 先归一化到 [0,1]，再 ImageNet 标准化
-            val r = (((pixel shr 16) and 0xFF) / 255.0f - MEAN_R) / STD_R
-            val g = (((pixel shr 8) and 0xFF) / 255.0f - MEAN_G) / STD_G
-            val b = ((pixel and 0xFF) / 255.0f - MEAN_B) / STD_B
-            claFloats[i] = r               // CHW: channel 0 = R
-            claFloats[i + sz * sz] = g     // channel 1 = G
-            claFloats[i + 2 * sz * sz] = b // channel 2 = B
-        }
-
-        val shape = longArrayOf(1, 3, CLA_INPUT_SIZE.toLong(), CLA_INPUT_SIZE.toLong())
-        return OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(claFloats), shape)
-    }
-
-    // ============ LYTNetV2 分类模型（768×576, 原始像素）============
-
-    /**
-     * 加载 LYTNetV2 人行红绿灯分类模型
-     */
     fun loadLytModel(modelFileName: String): Boolean {
         return try {
             val cacheFile = copyAssetToCache("models/$modelFileName") ?: return false
-            val options = createSessionOptions()
+            val options = createSessionOptions(useNnapi = false)
             lytSession = ortEnvironment.createSession(cacheFile.absolutePath, options)
             lytModelLoaded = true
-            Log.i(TAG, "LYTNetV2 模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
+            Log.i(TAG, "LYTNetV2模型加载成功: $modelFileName (${cacheFile.length() / 1024 / 1024}MB)")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "LYTNetV2 模型加载失败: $modelFileName", e)
+            Log.e(TAG, "LYTNetV2模型加载失败: $modelFileName", e)
             lytModelLoaded = false
             false
         }
@@ -462,74 +215,72 @@ class YoloOnnxEngine(private val context: Context) {
 
     fun isLytModelLoaded(): Boolean = lytModelLoaded
 
-    /**
-     * 执行 LYTNetV2 分类推理（768×576, 原始像素无归一化）
-     * @return Pair<classIndex, confidence> 或 null
-     */
-    fun runLytClassification(bitmap: Bitmap): Pair<Int, Float>? {
-        if (!lytModelLoaded || lytSession == null) {
-            Log.w(TAG, "LYTNetV2 模型未加载")
-            return null
-        }
+    fun runClassification(bitmap: Bitmap): Triple<Int, Float, FloatArray>? {
+        if (!claModelLoaded || claSession == null) return null
         return try {
-            val inputTensor = preprocessLytClassification(bitmap)
-            val inputName = lytSession!!.inputNames.first()
-            val inputs = Collections.singletonMap(inputName, inputTensor)
-            val outputs = lytSession!!.run(inputs)
-            val outputTensor = outputs[0]
-            val scores = (outputTensor.value as Array<FloatArray>)[0]
-
-            var bestIdx = 0
-            var bestProb = 0f
-            for (i in scores.indices) {
-                if (scores[i] > bestProb) {
-                    bestProb = scores[i]
-                    bestIdx = i
-                }
+            val resized = Bitmap.createScaledBitmap(bitmap, 448, 448, true)
+            val pixels = IntArray(448 * 448)
+            resized.getPixels(pixels, 0, 448, 0, 0, 448, 448)
+            val input = FloatArray(3 * 448 * 448)
+            val mean = floatArrayOf(0.485f, 0.456f, 0.406f)
+            val std = floatArrayOf(0.229f, 0.224f, 0.225f)
+            for (i in pixels.indices) {
+                val p = pixels[i]
+                input[i] = (((p shr 16) and 0xFF) / 255f - mean[0]) / std[0]
+                input[i + 448 * 448] = (((p shr 8) and 0xFF) / 255f - mean[1]) / std[1]
+                input[i + 2 * 448 * 448] = ((p and 0xFF) / 255f - mean[2]) / std[2]
             }
-
-            inputTensor.close()
-            Log.d(TAG, "runLytClassification: class=$bestIdx(${CLA_CLASSES[bestIdx]}) prob=${String.format("%.3f", bestProb)}")
-            Pair(bestIdx, bestProb)
+            val tensor = OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(input), longArrayOf(1, 3, 448, 448))
+            val outputs = claSession!!.run(Collections.singletonMap(claSession!!.inputNames.first(), tensor))
+            val raw = outputs[0].value as Array<FloatArray>
+            val scores = raw[0]
+            tensor.close()
+            resized.recycle()
+            // softmax 转概率（ResNet18 输出 logits，不是概率）
+            val maxScore = scores.maxOrNull() ?: 0f
+            val expSum = scores.map { kotlin.math.exp(it - maxScore) }.sum()
+            val allScores = FloatArray(scores.size) { kotlin.math.exp(scores[it] - maxScore) / expSum }
+            val maxIdx = scores.indices.maxByOrNull { scores[it] } ?: return null
+            Triple(maxIdx, scores[maxIdx], allScores)
         } catch (e: Exception) {
-            Log.e(TAG, "LYTNetV2 推理失败", e)
+            Log.e(TAG, "分类推理失败", e)
             null
         }
     }
 
-    // LYTNetV2 预处理缓冲区
-    private val lytPixels = IntArray(LYT_INPUT_H * LYT_INPUT_W)
-    private val lytFloats = FloatArray(1 * 3 * LYT_INPUT_H * LYT_INPUT_W)
-
-    /**
-     * LYTNetV2 预处理：缩放到 768×576，原始像素 [0, 255] → float, CHW 格式
-     * 不进行任何归一化（训练时未使用 ImageNet normalization）
-     */
-    private fun preprocessLytClassification(bitmap: Bitmap): OnnxTensor {
-        val resized = Bitmap.createScaledBitmap(bitmap, LYT_INPUT_W, LYT_INPUT_H, true)
-        resized.getPixels(lytPixels, 0, LYT_INPUT_W, 0, 0, LYT_INPUT_W, LYT_INPUT_H)
-        if (resized != bitmap) resized.recycle()
-
-        val hw = LYT_INPUT_H * LYT_INPUT_W
-        for (i in lytPixels.indices) {
-            val pixel = lytPixels[i]
-            lytFloats[i] = ((pixel shr 16) and 0xFF).toFloat()                    // R
-            lytFloats[i + hw] = ((pixel shr 8) and 0xFF).toFloat()                // G
-            lytFloats[i + 2 * hw] = (pixel and 0xFF).toFloat()                    // B
+    fun runLytClassification(bitmap: Bitmap): Triple<Int, Float, FloatArray>? {
+        if (!lytModelLoaded || lytSession == null) return null
+        return try {
+            val resized = Bitmap.createScaledBitmap(bitmap, 576, 768, true)
+            val pixels = IntArray(576 * 768)
+            resized.getPixels(pixels, 0, 576, 0, 0, 576, 768)
+            val input = FloatArray(3 * 576 * 768)
+            for (i in pixels.indices) {
+                val p = pixels[i]
+                input[i] = ((p shr 16) and 0xFF).toFloat()
+                input[i + 576 * 768] = ((p shr 8) and 0xFF).toFloat()
+                input[i + 2 * 576 * 768] = (p and 0xFF).toFloat()
+            }
+            val tensor = OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(input), longArrayOf(1, 3, 768, 576))
+            val outputs = lytSession!!.run(Collections.singletonMap(lytSession!!.inputNames.first(), tensor))
+            val raw = outputs[0].value as Array<FloatArray>
+            val scores = raw[0]
+            tensor.close()
+            resized.recycle()
+            val allScores = scores.clone()
+            val maxIdx = scores.indices.maxByOrNull { scores[it] } ?: return null
+            Triple(maxIdx, scores[maxIdx], allScores)
+        } catch (e: Exception) {
+            Log.e(TAG, "LYTNetV2推理失败", e)
+            null
         }
-
-        val shape = longArrayOf(1, 3, LYT_INPUT_H.toLong(), LYT_INPUT_W.toLong())
-        return OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(lytFloats), shape)
     }
 
     /**
-     * 创建 ONNX SessionOptions
+     * 创建 ONNX SessionOptions（启用 NNAPI 硬件加速）
      *
      * NNAPI 会将推理路由到设备的 NPU/DSP/GPU，通常比纯 CPU 快 3-5 倍。
-     * 但部分设备/驱动对 FP16 量化模型支持不佳，可能导致加载或初始化失败。
-     * 因此提供 useNnapi 参数，让调用方在 NNAPI 失败时回退到 CPU。
-     *
-     * @param useNnapi 是否尝试启用 NNAPI 硬件加速
+     * 如果设备不支持 NNAPI（低端机或 Android < 8.1），自动降级为 CPU。
      */
     private fun createSessionOptions(useNnapi: Boolean = true): SessionOptions {
         return SessionOptions().apply {
@@ -544,28 +295,6 @@ class YoloOnnxEngine(private val context: Context) {
             } else {
                 Log.i(TAG, "使用 CPU 推理")
             }
-        }
-    }
-
-    /**
-     * 执行商品检测推理
-     * 使用专用的 shopping.onnx 模型
-     */
-    fun runShoppingDetection(bitmap: Bitmap): List<DetectionResult> {
-        if (!shoppingModelLoaded || shoppingSession == null) {
-            Log.w(TAG, "商品模型未加载，返回空结果")
-            return emptyList()
-        }
-
-        return try {
-            val (inputTensor, originalWidth, originalHeight) = preprocessImage(bitmap)
-            val results = runInference(shoppingSession!!, inputTensor, false,
-                originalWidth, originalHeight, SHOPPING_CLASSES)
-            inputTensor.close()
-            results
-        } catch (e: Exception) {
-            Log.e(TAG, "商品推理失败", e)
-            emptyList()
         }
     }
 
@@ -641,6 +370,8 @@ class YoloOnnxEngine(private val context: Context) {
     private var letterboxScale = 1f
     private var letterboxPadX = 0f
     private var letterboxPadY = 0f
+
+    // 是否已保存诊断图像（仅保存一次）
 
     // ===== 预处理缓冲区复用（避免每帧 ~8MB 堆分配，减少 GC 压力） =====
     private val reusablePixels = IntArray(INPUT_SIZE * INPUT_SIZE)
@@ -847,7 +578,7 @@ class YoloOnnxEngine(private val context: Context) {
                 Log.i(TAG, "  输入图像: ${originalWidth}x${originalHeight}")
                 Log.i(TAG, "  Letterbox: scale=$letterboxScale, padX=$letterboxPadX, padY=$letterboxPadY")
                 Log.i(TAG, "  模型原始输出 (640×640 空间): cx=$cx, cy=$cy, w=$w, h=$h")
-                Log.i(TAG, "  bbox 左上角 (640×640 像素): lx=$gridX1, ly=$gridY1")
+                Log.i(TAG, "  bbox 左上角 (640×640 空间): lx=${cx - w/2f}, ly=${cy - h/2f}")
                 Log.i(TAG, "  bbox 左上角 (原图像素): px=$rawX1, py=$rawY1")
                 Log.i(TAG, "  bbox 归一化: x1=$x1, y1=$y1, x2=$x2, y2=$y2")
                 Log.i(TAG, "  bbox 中心 (归一化): cx=${(x1+x2)/2f}, cy=${(y1+y2)/2f}")
@@ -1172,27 +903,10 @@ class YoloOnnxEngine(private val context: Context) {
     /**
      * 采样掩码值（双线性插值）
      */
-    private fun sampleMask(mask: Array<FloatArray>, x: Float, y: Float): Float {
-        val x0 = x.toInt().coerceIn(0, mask[0].size - 1)
-        val y0 = y.toInt().coerceIn(0, mask.size - 1)
-        val x1 = (x0 + 1).coerceAtMost(mask[0].size - 1)
-        val y1 = (y0 + 1).coerceAtMost(mask.size - 1)
-        val fx = x - x0
-        val fy = y - y0
-        return mask[y0][x0] * (1 - fx) * (1 - fy) +
-                mask[y0][x1] * fx * (1 - fy) +
-                mask[y1][x0] * (1 - fx) * fy +
-                mask[y1][x1] * fx * fy
-    }
 
     /**
      * 安全采样掩码值（整数坐标）
      */
-    private fun sampleMaskSafe(mask: Array<FloatArray>, x: Int, y: Int): Float {
-        val cx = x.coerceIn(0, mask[0].size - 1)
-        val cy = y.coerceIn(0, mask.size - 1)
-        return mask[cy][cx]
-    }
 
     /**
      * 非极大值抑制 (NMS)
@@ -1257,8 +971,6 @@ class YoloOnnxEngine(private val context: Context) {
         detectSession = null
         trafficSession?.close()
         trafficSession = null
-        shoppingSession?.close()
-        shoppingSession = null
         claSession?.close()
         claSession = null
         lytSession?.close()
@@ -1266,7 +978,6 @@ class YoloOnnxEngine(private val context: Context) {
         segModelLoaded = false
         detectModelLoaded = false
         trafficModelLoaded = false
-        shoppingModelLoaded = false
         claModelLoaded = false
         lytModelLoaded = false
         if (!reusablePadded.isRecycled) reusablePadded.recycle()

@@ -15,9 +15,11 @@ class TrafficLightDetector(
 ) {
     companion object {
         private const val TAG = "TrafficLightDetector"
-        private const val MAJORITY_WINDOW = 8          // 8 帧窗口
-        private const val MIN_VALID_VOTES = 2          // 2 帧一致即确认
-        private const val MIN_CONFIDENCE = 0.40f       // 最低置信度
+        private const val MAJORITY_WINDOW = 4          // 4 帧窗口（约2-3秒）
+        private const val MIN_VALID_VOTES = 1          // 1 帧一致即确认（灵敏优先）
+        private const val MIN_CONFIDENCE = 0.40f       // 默认最低置信度
+        private const val RED_MIN_CONFIDENCE = 0.35f   // 红灯最低置信度（稍低，提高召回）
+        private const val GREEN_MIN_CONFIDENCE = 0.40f // 绿灯最低置信度
 
         // classIndex → TrafficLightState 映射
         // 0=red, 1=green, 2=countdown_green, 3=countdown_blank, 4=none
@@ -34,7 +36,9 @@ class TrafficLightDetector(
         val state: TrafficLightState,
         val confidence: Float,
         val stableState: TrafficLightState,
-        val className: String = ""
+        val className: String = "",
+        val redConf: Float = 0f,
+        val greenConf: Float = 0f
     )
 
     private val history = mutableListOf<TrafficLightState>()
@@ -55,25 +59,34 @@ class TrafficLightDetector(
             return TrafficLightResult(TrafficLightState.UNKNOWN, 0f, getMajorityState())
         }
 
-        val (classIdx, confidence) = result
+        val (classIdx, confidence, allScores) = result
         val className = if (classIdx in YoloOnnxEngine.CLA_CLASSES.indices)
             YoloOnnxEngine.CLA_CLASSES[classIdx] else "unknown"
 
-        Log.d(TAG, "classifier: $className($classIdx) conf=${String.format("%.2f", confidence)}")
+        val redConf = if (allScores.size > 0) allScores[0] else 0f
+        val greenConf = if (allScores.size > 1) allScores[1] else 0f
 
-        if (confidence < MIN_CONFIDENCE) {
-            addToHistory(TrafficLightState.UNKNOWN)
-            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className)
-        }
+        Log.d(TAG, "classifier: $className($classIdx) conf=${String.format("%.2f", confidence)} 红=${String.format("%.2f", redConf)} 绿=${String.format("%.2f", greenConf)}")
 
         val state = CLASS_TO_STATE[classIdx] ?: TrafficLightState.UNKNOWN
+        val minConf = when (state) {
+            TrafficLightState.RED -> RED_MIN_CONFIDENCE
+            TrafficLightState.GREEN -> GREEN_MIN_CONFIDENCE
+            else -> MIN_CONFIDENCE
+        }
+        if (confidence < minConf) {
+            addToHistory(TrafficLightState.UNKNOWN)
+            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className, redConf, greenConf)
+        }
         addToHistory(state)
 
         return TrafficLightResult(
             state = state,
             confidence = confidence,
             stableState = getMajorityState(),
-            className = className
+            className = className,
+            redConf = redConf,
+            greenConf = greenConf
         )
     }
 
@@ -93,25 +106,34 @@ class TrafficLightDetector(
             return TrafficLightResult(TrafficLightState.UNKNOWN, 0f, getMajorityState())
         }
 
-        val (classIdx, confidence) = result
+        val (classIdx, confidence, allScores) = result
         val className = if (classIdx in YoloOnnxEngine.CLA_CLASSES.indices)
             YoloOnnxEngine.CLA_CLASSES[classIdx] else "unknown"
 
-        Log.d(TAG, "LYTNetV2: $className($classIdx) prob=${String.format("%.2f", confidence)}")
+        val redConf = if (allScores.size > 0) allScores[0] else 0f
+        val greenConf = if (allScores.size > 1) allScores[1] else 0f
 
-        if (confidence < MIN_CONFIDENCE) {
-            addToHistory(TrafficLightState.UNKNOWN)
-            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className)
-        }
+        Log.d(TAG, "LYTNetV2: $className($classIdx) prob=${String.format("%.2f", confidence)} 红=${String.format("%.2f", redConf)} 绿=${String.format("%.2f", greenConf)}")
 
         val state = CLASS_TO_STATE[classIdx] ?: TrafficLightState.UNKNOWN
+        val minConf = when (state) {
+            TrafficLightState.RED -> RED_MIN_CONFIDENCE
+            TrafficLightState.GREEN -> GREEN_MIN_CONFIDENCE
+            else -> MIN_CONFIDENCE
+        }
+        if (confidence < minConf) {
+            addToHistory(TrafficLightState.UNKNOWN)
+            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className, redConf, greenConf)
+        }
         addToHistory(state)
 
         return TrafficLightResult(
             state = state,
             confidence = confidence,
             stableState = getMajorityState(),
-            className = "$className(LYT)"
+            className = "$className(LYT)",
+            redConf = redConf,
+            greenConf = greenConf
         )
     }
 

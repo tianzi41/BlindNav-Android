@@ -10,10 +10,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,20 +46,16 @@ fun MainScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val modelsLoaded by viewModel.modelsLoaded.collectAsState()
     val modelLoadStatus by viewModel.modelLoadStatus.collectAsState()
+    val exposureLocked by viewModel.exposureCompensationLocked.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraManager = remember(lifecycleOwner) {
         CameraManager(context, lifecycleOwner)
     }
 
-    val currentNavState = rememberUpdatedState(navigationState)
     val onFrameAvailable: (Bitmap) -> Unit = remember {
         { bitmap ->
-            if (currentNavState.value == NavigationState.ITEM_SEARCH) {
-                viewModel.processItemSearchFrame(bitmap)
-            } else {
-                viewModel.processFrame(bitmap)
-            }
+            viewModel.processFrame(bitmap)
         }
     }
 
@@ -75,24 +71,26 @@ fun MainScreen(
                 errorMessage = errorMessage,
                 modelsLoaded = modelsLoaded,
                 modelLoadStatus = modelLoadStatus,
+                exposureLocked = exposureLocked,
                 onStartBlindNav = { viewModel.startBlindPathNavigation() },
                 onStartCrossStreet = { viewModel.startCrossStreet() },
                 onStartCrosswalkTest = { viewModel.startCrosswalkTest() },
                 onStartTrafficLightTest = { viewModel.startTrafficLightTest() },
                 onStartLytTrafficLightTest = { viewModel.startLytTrafficLightTest() },
-                onStartItemSearch = { viewModel.showItemSearchInput() },
                 onStop = { viewModel.stopNavigation() },
-                onConfirmFound = { viewModel.confirmItemFound() },
+                onSettings = { viewModel.showSettings() },
+                onToggleExposure = { viewModel.toggleExposureCompensation(cameraManager) },
                 onFrameAvailable = onFrameAvailable,
                 cameraManager = cameraManager,
                 onCameraRunningChanged = { viewModel.setCameraRunning(it) },
                 onClearError = { viewModel.clearError() }
             )
         }
-        ScreenMode.ITEM_SEARCH_INPUT -> {
-            ItemSearchScreen(
-                onBack = { viewModel.showMainScreen() },
-                onStartSearch = { itemName -> viewModel.startItemSearch(itemName) }
+        ScreenMode.SETTINGS -> {
+            SettingsScreen(
+                exposureLocked = exposureLocked,
+                onToggleExposure = { viewModel.toggleExposureCompensation(cameraManager) },
+                onBack = { viewModel.showMainScreen() }
             )
         }
     }
@@ -114,9 +112,10 @@ private fun MainContent(
     onStartCrosswalkTest: () -> Unit,
     onStartTrafficLightTest: () -> Unit,
     onStartLytTrafficLightTest: () -> Unit,
-    onStartItemSearch: () -> Unit,
     onStop: () -> Unit,
-    onConfirmFound: () -> Unit,
+    onSettings: () -> Unit,
+    exposureLocked: Boolean,
+    onToggleExposure: () -> Unit,
     onFrameAvailable: (Bitmap) -> Unit,
     cameraManager: CameraManager,
     onCameraRunningChanged: (Boolean) -> Unit,
@@ -132,6 +131,20 @@ private fun MainContent(
             onCameraRunningChanged = onCameraRunningChanged,
             modifier = Modifier.fillMaxSize()
         )
+
+        // 设置按钮（右上角）
+        IconButton(
+            onClick = onSettings,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "设置",
+                tint = Color.White
+            )
+        }
 
         // 底部控制区域
         Column(
@@ -212,16 +225,6 @@ private fun MainContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ControlButton(
-                        text = "物品查找",
-                        onClick = onStartItemSearch,
-                        icon = Icons.Default.Search,
-                        buttonColor = ItemSearchButtonColor,
-                        contentDescription = "启动物品查找模式",
-                        enabled = modelsLoaded && (navigationState == NavigationState.IDLE || navigationState == NavigationState.ITEM_SEARCH),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ControlButton(
                         text = "停止",
                         onClick = onStop,
                         icon = Icons.Default.Stop,
@@ -230,24 +233,6 @@ private fun MainContent(
                         enabled = navigationState != NavigationState.IDLE,
                         modifier = Modifier.weight(1f)
                     )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (navigationState == NavigationState.ITEM_SEARCH) {
-                        CompactControlButton(
-                            text = "找到了",
-                            onClick = onConfirmFound,
-                            icon = Icons.Default.CheckCircle,
-                            buttonColor = Success,
-                            contentDescription = "确认找到目标物品"
-                        )
-                    }
                 }
             }
         }

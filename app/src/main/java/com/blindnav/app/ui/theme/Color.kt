@@ -33,7 +33,6 @@ val Info = Color(0xFF2196F3)         // 蓝色 - 信息
 // 导航按钮颜色
 val BlindNavButtonColor = Color(0xFF1976D2)   // 盲道导航 - 蓝色
 val CrossStreetButtonColor = Color(0xFFFF9800) // 过马路 - 橙色
-val ItemSearchButtonColor = Color(0xFF9C27B0)  // 物品查找 - 紫色
 val StopButtonColor = Color(0xFFF44336)        // 停止 - 红色
 
 // 检测叠加颜色
