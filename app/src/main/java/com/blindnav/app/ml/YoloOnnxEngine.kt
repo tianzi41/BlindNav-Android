@@ -60,8 +60,10 @@ class YoloOnnxEngine(private val context: Context) {
             "stop"               // class 6: 红灯
         )
 
-        // 行人红绿灯分类模型类别名（ResNet18/LYTNetV2，5 类）
+        // 行人红绿灯分类模型类别名（ResNet18 5 类）
         val CLA_CLASSES = arrayOf("red", "green", "countdown_green", "countdown_blank", "none")
+        // LYTNetV2 3分类模型类别名（2026-07 V3模型，94.9% 准确率，含无灯类别）
+        val LYT2_CLASSES = arrayOf("red", "green", "none")
     }
 
     // ONNX Runtime 环境和会话
@@ -241,35 +243,48 @@ class YoloOnnxEngine(private val context: Context) {
             val expSum = scores.map { kotlin.math.exp(it - maxScore) }.sum()
             val allScores = FloatArray(scores.size) { kotlin.math.exp(scores[it] - maxScore) / expSum }
             val maxIdx = scores.indices.maxByOrNull { scores[it] } ?: return null
-            Triple(maxIdx, scores[maxIdx], allScores)
+            Triple(maxIdx, allScores[maxIdx], allScores)  // 返回 softmax 概率
         } catch (e: Exception) {
             Log.e(TAG, "分类推理失败", e)
             null
         }
     }
 
+    /**
+     * LYTNetV2 2类推理（新模型 2026-07，96.6% 准确率）
+     * 输入: 768×576 (W×H), NCHW=[1,3,576,768], 归一化到 [0,1]
+     * 输出: logits (需要 softmax 转概率)
+     */
     fun runLytClassification(bitmap: Bitmap): Triple<Int, Float, FloatArray>? {
         if (!lytModelLoaded || lytSession == null) return null
         return try {
-            val resized = Bitmap.createScaledBitmap(bitmap, 576, 768, true)
-            val pixels = IntArray(576 * 768)
-            resized.getPixels(pixels, 0, 576, 0, 0, 576, 768)
-            val input = FloatArray(3 * 576 * 768)
+            val resized = Bitmap.createScaledBitmap(bitmap, 768, 576, true)
+            val pixels = IntArray(768 * 576)
+            resized.getPixels(pixels, 0, 768, 0, 0, 768, 576)
+            val input = FloatArray(3 * 768 * 576)
             for (i in pixels.indices) {
                 val p = pixels[i]
-                input[i] = ((p shr 16) and 0xFF).toFloat()
-                input[i + 576 * 768] = ((p shr 8) and 0xFF).toFloat()
-                input[i + 2 * 576 * 768] = (p and 0xFF).toFloat()
+                input[i] = ((p shr 16) and 0xFF).toFloat() / 255f
+                input[i + 768 * 576] = ((p shr 8) and 0xFF).toFloat() / 255f
+                input[i + 2 * 768 * 576] = (p and 0xFF).toFloat() / 255f
             }
-            val tensor = OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(input), longArrayOf(1, 3, 768, 576))
-            val outputs = lytSession!!.run(Collections.singletonMap(lytSession!!.inputNames.first(), tensor))
+            val tensor = OnnxTensor.createTensor(ortEnvironment, FloatBuffer.wrap(input), longArrayOf(1, 3, 576, 768))
+            // 新模型有两个输出: classification + direction，显式只取 classification
+            val outputs = lytSession!!.run(
+                Collections.singletonMap(lytSession!!.inputNames.first(), tensor),
+                Collections.singleton("classification")
+            )
             val raw = outputs[0].value as Array<FloatArray>
             val scores = raw[0]
             tensor.close()
             resized.recycle()
-            val allScores = scores.clone()
+
+            // softmax（新模型无内置 softmax）
+            val maxScore = scores.maxOrNull() ?: 0f
+            val expSum = scores.map { kotlin.math.exp(it - maxScore) }.sum()
+            val allScores = FloatArray(scores.size) { kotlin.math.exp(scores[it] - maxScore) / expSum }
             val maxIdx = scores.indices.maxByOrNull { scores[it] } ?: return null
-            Triple(maxIdx, scores[maxIdx], allScores)
+            Triple(maxIdx, allScores[maxIdx], allScores)  // 返回 softmax 概率，非 raw logit
         } catch (e: Exception) {
             Log.e(TAG, "LYTNetV2推理失败", e)
             null

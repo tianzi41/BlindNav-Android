@@ -6,13 +6,16 @@ package com.blindnav.app.camera
 
 import android.content.Context
 import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.util.Log
 import android.util.Rational
 import android.util.Size
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -50,6 +53,15 @@ class CameraManager(
     // 是否使用前置摄像头
     private var useFrontCamera = false
 
+    // 是否使用广角摄像头（false=主摄）
+    private var useUltraWide = false
+    // 是否检测到可用的广角摄像头
+    private var hasUltraWide = false
+    // 广角摄像头的 CameraInfo（用于构建 Selector）
+    private var ultraWideCameraInfo: CameraInfo? = null
+    // 当前绑定的 PreviewView（用于切换时重启）
+    private var currentPreviewView: PreviewView? = null
+
     // 帧回调
     private var onFrameCallback: ((ImageProxy) -> Unit)? = null
 
@@ -72,6 +84,7 @@ class CameraManager(
      * @param previewView 用于显示预览的 PreviewView
      */
     fun startCamera(previewView: PreviewView) {
+        currentPreviewView = previewView
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
@@ -92,7 +105,7 @@ class CameraManager(
         val cameraSelector = if (useFrontCamera) {
             CameraSelector.DEFAULT_FRONT_CAMERA
         } else {
-            CameraSelector.DEFAULT_BACK_CAMERA
+            buildBackCameraSelector()
         }
 
         // 预览用例（不指定分辨率，让 CameraX 自动匹配显示）
@@ -165,11 +178,93 @@ class CameraManager(
     }
 
     /**
+     * 切换广角/主摄（仅后置生效）
+     * 需要 Provider 已初始化，否则静默保存设置下次启动生效
+     */
+    fun setUltraWide(enabled: Boolean) {
+        if (useUltraWide == enabled) return
+        useUltraWide = enabled
+        Log.i(TAG, "广角模式: ${if (enabled) "开启" else "关闭"} (可用=$hasUltraWide)")
+        // 如果相机已启动，立即重启以应用切换
+        currentPreviewView?.let { startCamera(it) }
+    }
+
+    /**
+     * 是否检测到可切换的广角摄像头
+     */
+    fun isUltraWideAvailable(): Boolean = hasUltraWide
+
+    /**
+     * 当前是否使用广角
+     */
+    fun isUsingUltraWide(): Boolean = useUltraWide
+
+    /**
+     * 构建后置摄像头选择器
+     * 扫描所有后置摄像头，按焦距筛选广角镜头，切换到主摄时回退默认
+     */
+    private fun buildBackCameraSelector(): CameraSelector {
+        val provider = cameraProvider ?: return CameraSelector.DEFAULT_BACK_CAMERA
+
+        try {
+            val backCameras = provider.availableCameraInfos.filter {
+                Camera2CameraInfo.from(it).getCameraCharacteristic(
+                    CameraCharacteristics.LENS_FACING
+                ) == CameraCharacteristics.LENS_FACING_BACK
+            }
+
+            // 扫描广角摄像头：焦距最短的非主摄
+            var minFocal = Float.MAX_VALUE
+            var secondMinFocal = Float.MAX_VALUE
+            var wideInfo: CameraInfo? = null
+
+            for (info in backCameras) {
+                val focalLengths = Camera2CameraInfo.from(info).getCameraCharacteristic(
+                    CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS
+                ) ?: continue
+                val fl = focalLengths.firstOrNull() ?: continue
+                if (fl < minFocal) {
+                    secondMinFocal = minFocal
+                    minFocal = fl
+                    wideInfo = info
+                } else if (fl < secondMinFocal) {
+                    secondMinFocal = fl
+                }
+            }
+
+            // 判断是否有真正的广角：焦距差 > 40% 才算独立广角
+            if (wideInfo != null && secondMinFocal < Float.MAX_VALUE &&
+                minFocal / secondMinFocal < 0.6f) {
+                hasUltraWide = true
+                ultraWideCameraInfo = wideInfo!!
+                Log.i(TAG, "检测到广角摄像头: focal=${minFocal}mm vs 主摄=${secondMinFocal}mm")
+            } else {
+                hasUltraWide = false
+                ultraWideCameraInfo = null
+                Log.i(TAG, "未检测到独立广角摄像头 (minFocal=$minFocal, second=$secondMinFocal)")
+            }
+
+            if (useUltraWide && hasUltraWide && ultraWideCameraInfo != null) {
+                return CameraSelector.Builder()
+                    .addCameraFilter { cameras ->
+                        cameras.filter { it == ultraWideCameraInfo }
+                    }
+                    .build()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "扫描广角摄像头失败: ${e.message}")
+        }
+
+        return CameraSelector.DEFAULT_BACK_CAMERA
+    }
+
+    /**
      * 停止相机
      */
     fun stopCamera() {
         cameraProvider?.unbindAll()
         isRunning = false
+        currentPreviewView = null
         Log.i(TAG, "相机已停止")
     }
 

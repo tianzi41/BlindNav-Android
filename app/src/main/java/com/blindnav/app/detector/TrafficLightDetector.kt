@@ -20,8 +20,11 @@ class TrafficLightDetector(
         private const val MIN_CONFIDENCE = 0.40f       // 默认最低置信度
         private const val RED_MIN_CONFIDENCE = 0.35f   // 红灯最低置信度（稍低，提高召回）
         private const val GREEN_MIN_CONFIDENCE = 0.40f // 绿灯最低置信度
+        // LYT2 3分类模型阈值（有 "none" 类别，但仍需一定阈值过滤低置信度预测）
+        private const val LYT2_RED_MIN_CONF = 0.70f
+        private const val LYT2_GREEN_MIN_CONF = 0.75f
 
-        // classIndex → TrafficLightState 映射
+        // classIndex → TrafficLightState 映射（ResNet18 5类模型）
         // 0=red, 1=green, 2=countdown_green, 3=countdown_blank, 4=none
         private val CLASS_TO_STATE = mapOf(
             0 to TrafficLightState.RED,
@@ -29,6 +32,14 @@ class TrafficLightDetector(
             2 to TrafficLightState.GREEN,     // countdown_green → 绿灯（倒数阶段仍是绿）
             3 to TrafficLightState.UNKNOWN,  // countdown_blank → 无灯
             4 to TrafficLightState.UNKNOWN   // none → 无灯
+        )
+
+        // LYTNetV2 3分类模型 classIndex → TrafficLightState 映射
+        // 0=red, 1=green, 2=none
+        private val LYT3_CLASS_TO_STATE = mapOf(
+            0 to TrafficLightState.RED,
+            1 to TrafficLightState.GREEN,
+            2 to TrafficLightState.UNKNOWN   // none → 无灯
         )
     }
 
@@ -38,7 +49,8 @@ class TrafficLightDetector(
         val stableState: TrafficLightState,
         val className: String = "",
         val redConf: Float = 0f,
-        val greenConf: Float = 0f
+        val greenConf: Float = 0f,
+        val noneConf: Float = 0f
     )
 
     private val history = mutableListOf<TrafficLightState>()
@@ -91,7 +103,9 @@ class TrafficLightDetector(
     }
 
     /**
-     * 使用 LYTNetV2 分类模型检测红绿灯（768×576, 原始像素无归一化）
+     * 使用 LYTNetV2 3分类模型检测红绿灯（2026-07, V3, 94.9%）
+     * 输入: 576×768 (W×H), 原始像素[0,1], 无内置 softmax（在引擎层处理）
+     * 3分类: red(0), green(1), none(2) — 模型自带"无灯"类别，大幅降低误报
      */
     fun detectWithLyt(bitmap: Bitmap): TrafficLightResult {
         if (!engine.isLytModelLoaded()) {
@@ -107,23 +121,25 @@ class TrafficLightDetector(
         }
 
         val (classIdx, confidence, allScores) = result
-        val className = if (classIdx in YoloOnnxEngine.CLA_CLASSES.indices)
-            YoloOnnxEngine.CLA_CLASSES[classIdx] else "unknown"
+        val className = if (classIdx in YoloOnnxEngine.LYT2_CLASSES.indices)
+            YoloOnnxEngine.LYT2_CLASSES[classIdx] else "unknown"
 
         val redConf = if (allScores.size > 0) allScores[0] else 0f
         val greenConf = if (allScores.size > 1) allScores[1] else 0f
+        val noneConf = if (allScores.size > 2) allScores[2] else 0f
 
-        Log.d(TAG, "LYTNetV2: $className($classIdx) prob=${String.format("%.2f", confidence)} 红=${String.format("%.2f", redConf)} 绿=${String.format("%.2f", greenConf)}")
+        Log.d(TAG, "LYTNetV2: $className($classIdx) prob=${String.format("%.2f", confidence)} 红=${String.format("%.2f", redConf)} 绿=${String.format("%.2f", greenConf)} 无=${String.format("%.2f", noneConf)}")
 
-        val state = CLASS_TO_STATE[classIdx] ?: TrafficLightState.UNKNOWN
+        // 使用 LYT3 专用映射（3分类模型，class 2 = none → UNKNOWN）
+        val state = LYT3_CLASS_TO_STATE[classIdx] ?: TrafficLightState.UNKNOWN
         val minConf = when (state) {
-            TrafficLightState.RED -> RED_MIN_CONFIDENCE
-            TrafficLightState.GREEN -> GREEN_MIN_CONFIDENCE
+            TrafficLightState.RED -> LYT2_RED_MIN_CONF
+            TrafficLightState.GREEN -> LYT2_GREEN_MIN_CONF
             else -> MIN_CONFIDENCE
         }
         if (confidence < minConf) {
             addToHistory(TrafficLightState.UNKNOWN)
-            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className, redConf, greenConf)
+            return TrafficLightResult(TrafficLightState.UNKNOWN, confidence, getMajorityState(), className, redConf, greenConf, noneConf)
         }
         addToHistory(state)
 
@@ -133,7 +149,8 @@ class TrafficLightDetector(
             stableState = getMajorityState(),
             className = "$className(LYT)",
             redConf = redConf,
-            greenConf = greenConf
+            greenConf = greenConf,
+            noneConf = noneConf
         )
     }
 

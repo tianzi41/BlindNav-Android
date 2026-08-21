@@ -28,6 +28,7 @@ import com.blindnav.app.data.NavigationState
 import com.blindnav.app.data.ScreenMode
 import com.blindnav.app.ui.components.*
 import com.blindnav.app.ui.theme.*
+import kotlinx.coroutines.delay
 import com.blindnav.app.viewmodel.MainViewModel
 import com.blindnav.app.camera.CameraManager
 
@@ -47,10 +48,20 @@ fun MainScreen(
     val modelsLoaded by viewModel.modelsLoaded.collectAsState()
     val modelLoadStatus by viewModel.modelLoadStatus.collectAsState()
     val exposureLocked by viewModel.exposureCompensationLocked.collectAsState()
+    val ultraWideEnabled by viewModel.ultraWideEnabled.collectAsState()
+    val ultraWideAvailable by viewModel.ultraWideAvailable.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraManager = remember(lifecycleOwner) {
         CameraManager(context, lifecycleOwner)
+    }
+
+    // 检测广角摄像头可用性（相机启动后延迟检查）
+    LaunchedEffect(cameraRunning) {
+        if (cameraRunning) {
+            kotlinx.coroutines.delay(3000) // 等 CameraProvider 就绪
+            viewModel.setUltraWideAvailable(cameraManager.isUltraWideAvailable())
+        }
     }
 
     val onFrameAvailable: (Bitmap) -> Unit = remember {
@@ -90,6 +101,9 @@ fun MainScreen(
             SettingsScreen(
                 exposureLocked = exposureLocked,
                 onToggleExposure = { viewModel.toggleExposureCompensation(cameraManager) },
+                ultraWideEnabled = ultraWideEnabled,
+                ultraWideAvailable = ultraWideAvailable,
+                onToggleUltraWide = { viewModel.toggleUltraWide(cameraManager) },
                 onBack = { viewModel.showMainScreen() }
             )
         }

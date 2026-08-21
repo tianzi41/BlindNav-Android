@@ -82,6 +82,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _exposureCompensationLocked = MutableStateFlow(false)
     val exposureCompensationLocked: StateFlow<Boolean> = _exposureCompensationLocked.asStateFlow()
 
+    // 广角摄像头是否启用
+    private val _ultraWideEnabled = MutableStateFlow(false)
+    val ultraWideEnabled: StateFlow<Boolean> = _ultraWideEnabled.asStateFlow()
+    // 设备是否有广角摄像头
+    private val _ultraWideAvailable = MutableStateFlow(false)
+    val ultraWideAvailable: StateFlow<Boolean> = _ultraWideAvailable.asStateFlow()
+
     // 帧处理锁：防止协程堆积导致处理旧帧（状态锁死的根因）
     // 当正在处理时跳过新帧，CameraX 的 STRATEGY_KEEP_ONLY_LATEST 保证下次回调拿到最新帧
     @Volatile
@@ -192,7 +199,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 withContext(Dispatchers.Main) { _modelLoadStatus.value = "加载LYTNetV2模型..." }
-                val loaded = yoloEngine.loadLytModel("pedestrian_light_lytnet.onnx")
+                val loaded = yoloEngine.loadLytModel("pedestrian_light_lytnet_v3.onnx")
                 withContext(Dispatchers.Main) {
                     _modelLoadStatus.value = if (loaded) "LYTNetV2模型就绪" else "LYTNetV2加载失败"
                 }
@@ -415,6 +422,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val newState = !_exposureCompensationLocked.value
         _exposureCompensationLocked.value = newState
         cameraManager.setExposureCompensation(newState)
+    }
+
+    fun setUltraWideAvailable(available: Boolean) {
+        _ultraWideAvailable.value = available
+    }
+
+    fun toggleUltraWide(cameraManager: com.blindnav.app.camera.CameraManager) {
+        val newState = !_ultraWideEnabled.value
+        _ultraWideEnabled.value = newState
+        cameraManager.setUltraWide(newState)
     }
 
     /**

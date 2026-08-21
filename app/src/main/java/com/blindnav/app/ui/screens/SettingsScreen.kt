@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     exposureLocked: Boolean,
     onToggleExposure: (Boolean) -> Unit,
+    ultraWideEnabled: Boolean,
+    ultraWideAvailable: Boolean,
+    onToggleUltraWide: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -65,6 +68,30 @@ fun SettingsScreen(
                 Switch(
                     checked = exposureLocked,
                     onCheckedChange = onToggleExposure
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "使用广角摄像头",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = if (ultraWideAvailable) "切换到广角镜头，视野更宽" else "设备不支持广角摄像头",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Switch(
+                    checked = ultraWideEnabled,
+                    onCheckedChange = onToggleUltraWide,
+                    enabled = ultraWideAvailable
                 )
             }
 

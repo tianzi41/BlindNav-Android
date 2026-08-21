@@ -169,7 +169,7 @@ class CrossStreetManager(
         // 红绿灯持续无法检测 → 目标丢失，回退到 SEEKING
         if (tlResult.stableState == TrafficLightState.UNKNOWN) {
             cntLost++
-            guidance = "找不到红绿灯"
+            guidance = "找不到灯"
             if (cntLost >= FRAMES_LOST) {
                 Log.w(TAG, "WAIT_LIGHT: 红绿灯丢失，回退到 SEEKING")
                 cntLost = 0
