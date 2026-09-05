@@ -38,3 +38,5 @@ captures/
 # 模型文件（大体积二进制，不纳入版本控制）
 *.onnx
 app/src/main/assets/models/
+app/src/main/assets/voice/
+app/src/main/assets/music/
