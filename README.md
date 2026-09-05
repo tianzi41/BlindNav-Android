@@ -85,7 +85,7 @@ The project initially referenced the OpenGlass concepts and some model weights. 
 
 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/blindnav-android.git
+git clone https://github.com/tianzi41/BlindNav-Android.git
 ```
 
 2. Open the project in Android Studio

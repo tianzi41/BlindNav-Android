@@ -85,7 +85,7 @@
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/你的用户名/blindnav-android.git
+git clone https://github.com/tianzi41/BlindNav-Android.git
 ```
 
 2. 用 Android Studio 打开项目
